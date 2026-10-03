@@ -1,0 +1,6 @@
+{
+  "name": "SIT Nexus",
+  "description": "Sprint Intelligence & Execution Visibility Platform - Enterprise standup intelligence connecting Teams, Regions, Resources, Projects, and Azure DevOps Stories.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
