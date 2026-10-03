@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'url';
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -8,6 +9,7 @@ import projectRoutes from './server/routes/projects';
 import queryRoutes from './server/routes/query';
 import { db } from './server/db';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
 
 const app = express();
