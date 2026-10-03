@@ -9,7 +9,7 @@ import projectRoutes from './server/routes/projects';
 import queryRoutes from './server/routes/query';
 import { db } from './server/db';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 dotenv.config();
 
 const app = express();
@@ -80,7 +80,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     // Serve static files in production
-    const distPath = path.resolve(__dirname, 'dist');
+    const distPath = path.resolve(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req: Request, res: Response) => {
       res.sendFile(path.resolve(distPath, 'index.html'));
