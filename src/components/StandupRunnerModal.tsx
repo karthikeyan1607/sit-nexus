@@ -113,7 +113,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
   if (!currentResource) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-        <div className="bg-white border border-[#E5E7EB] p-8 rounded-lg shadow-xl text-center max-w-sm w-full">
+        <div className="bg-white border border-[#E5E7EB] p-8 rounded-xl shadow-xl text-center max-w-sm w-full">
           <p className="text-[#1E293B] text-sm font-bold">No resources available</p>
           <p className="text-xs text-[#64748B] mt-1.5 leading-relaxed">
             Import Resource Master data or run an Azure DevOps query to populate resources for the standup.
@@ -121,7 +121,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
           <button 
             type="button"
             onClick={onClose} 
-            className="mt-5 px-5 py-2 bg-[#FFCD11] hover:bg-[#F2C200] active:scale-[0.98] text-[#1C1C1C] font-mono font-bold text-xs uppercase rounded transition-all shadow-xs cursor-pointer"
+            className="mt-5 px-5 py-2 bg-[#FFCD11] hover:bg-[#F2C200] active:scale-[0.98] text-[#1C1C1C] font-mono font-bold text-xs uppercase rounded-lg transition-all shadow-xs cursor-pointer"
           >
             Return to Dashboard
           </button>
@@ -162,7 +162,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
         </div>
 
         {/* Center: Timer widget */}
-        <div className="flex items-center gap-3 bg-[#F9FAFB] px-3.5 py-1.5 rounded border border-[#E5E7EB]">
+        <div className="flex items-center gap-3 bg-[#F9FAFB] px-3.5 py-1.5 rounded-lg border border-[#E5E7EB]">
           <Timer className="w-4 h-4 text-[#D97706]" />
           <span className={`font-mono text-sm font-bold ${timerSeconds <= 15 ? 'text-red-600 animate-pulse' : 'text-[#1F2937]'}`}>
             {formatTimer(timerSeconds)}
@@ -199,7 +199,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] hover:text-[#111827] transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] hover:text-[#111827] transition-colors cursor-pointer"
             title="Exit Standup Facilitator"
           >
             <X className="w-5 h-5" />
@@ -212,11 +212,11 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
       <div className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-8 flex flex-col justify-between overflow-y-auto">
         
         {/* Current Speaker Banner Card */}
-        <div className="bg-white border border-[#E5E7EB] rounded p-6 sm:p-8 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 sm:p-8 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-[#F1F3F5] gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-[#FEF9C3] border-2 border-[#FFCD11] rounded flex items-center justify-center font-mono font-black text-xl text-[#854D0E] shrink-0">
+              <div className="w-14 h-14 bg-[#FEF9C3] border-2 border-[#FFCD11] rounded-xl flex items-center justify-center font-mono font-black text-xl text-[#854D0E] shrink-0">
                 {currentResource.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
               </div>
 
@@ -258,8 +258,8 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
             <div className="flex flex-col gap-3">
               {currentResource.stories.map((story) => (
                 <div 
-                  key={story.id}
-                  className="bg-[#F9FAFB] hover:bg-white border border-[#E5E7EB] hover:border-[#D1D5DB] p-4 rounded shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all"
+                  key={story.id} 
+                  className="bg-[#F9FAFB] hover:bg-white border border-[#E5E7EB] hover:border-[#D1D5DB] p-4 rounded-xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1 text-xs font-mono text-[#6B7280]">
@@ -289,7 +289,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
                     <select
                       value={story.status}
                       onChange={(e) => onUpdateStatus(story.id, e.target.value as StoryStatus)}
-                      className={`text-xs font-mono font-bold py-1.5 px-3 rounded border appearance-none cursor-pointer outline-none transition-colors ${
+                      className={`text-xs font-mono font-bold py-1.5 px-3 rounded-lg border appearance-none cursor-pointer outline-none transition-colors ${
                         story.status === 'Active'
                           ? 'bg-red-50 text-red-700 border-red-300'
                           : story.status === 'New'
@@ -311,7 +311,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
                       <option value="Blocked" className="bg-white text-red-700 font-bold">Blocked</option>
                     </select>
 
-                    <span className="text-xs font-mono font-bold text-[#374151] bg-[#F3F4F6] px-3 py-1.5 rounded border border-[#E5E7EB]">
+                    <span className="text-xs font-mono font-bold text-[#374151] bg-[#F3F4F6] px-3 py-1.5 rounded-lg border border-[#E5E7EB]">
                       {story.storyPoints ?? 0} pts
                     </span>
                   </div>
@@ -323,13 +323,13 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
         </div>
 
         {/* Bottom Navigation Toolbar */}
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 border border-[#E5E7EB] rounded shadow-xs">
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 border border-[#E5E7EB] rounded-xl shadow-xs">
           
           <button
             type="button"
             onClick={handlePrev}
             disabled={currentIndex === 0}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F3F4F6] hover:bg-[#E5E7EB] disabled:opacity-40 text-[#374151] text-xs font-mono font-bold uppercase rounded border border-[#D1D5DB] transition-colors cursor-pointer"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F3F4F6] hover:bg-[#E5E7EB] disabled:opacity-40 text-[#374151] text-xs font-mono font-bold uppercase rounded-lg border border-[#D1D5DB] transition-colors cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>Previous Resource</span>
@@ -341,7 +341,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
             <select
               value={currentIndex}
               onChange={(e) => handleSelectSpeaker(Number(e.target.value))}
-              className="bg-white border border-[#D1D5DB] text-xs font-semibold text-[#1F2937] py-1.5 px-3 rounded outline-none cursor-pointer focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] transition-all"
+              className="bg-white border border-[#D1D5DB] text-xs font-semibold text-[#1F2937] py-1.5 px-3 rounded-lg outline-none cursor-pointer focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] transition-all"
             >
               {resources.map((r, i) => (
                 <option key={r.name} value={i} className="bg-white text-[#1F2937]">
@@ -354,7 +354,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
           <button
             type="button"
             onClick={currentIndex === resources.length - 1 ? handleFinish : handleNext}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-[#FFCD11] hover:bg-[#F2C200] active:scale-[0.98] text-[#1C1C1C] text-xs font-mono font-black uppercase rounded transition-all shadow-sm cursor-pointer"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-[#FFCD11] hover:bg-[#F2C200] active:scale-[0.98] text-[#1C1C1C] text-xs font-mono font-black uppercase rounded-lg transition-all shadow-xs cursor-pointer"
             title={currentIndex === resources.length - 1 ? 'Complete standup session and navigate to Dashboard' : 'Move to next resource'}
           >
             <span>{currentIndex === resources.length - 1 ? 'Finish Standup' : 'Next Resource →'}</span>

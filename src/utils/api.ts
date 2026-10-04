@@ -133,7 +133,7 @@ export async function validateConnectionApi(data: {
   }>(res);
 
   if (json.success && json.data.connected) {
-    // Save PAT in browser sessionStorage for active session only (Section 3 & 4)
+    // Save PAT in browser localStorage using key sit_nexus_ado_pat (persists across browser restarts)
     CredentialService.setPat(data.pat);
     CredentialService.setConnection({
       connected: true,

@@ -1,19 +1,19 @@
 /**
- * SprintSync-Style Credential Service (SIT Nexus Specification Section 3, 4, 5, 6)
+ * Azure DevOps Credential Service (SIT Nexus Specification Section 3, 4, 5, 6)
  * 
- * Manages the manager's Azure DevOps Personal Access Token (PAT) for the active browser session.
+ * Manages the manager's Azure DevOps Personal Access Token (PAT) in browser localStorage.
  * 
- * SECURITY RULES:
- * - Stored exclusively in browser sessionStorage ('sit_nexus_ado_pat')
- * - NEVER stored in localStorage
- * - NEVER stored in PostgreSQL or database
+ * RULES:
+ * - Stored in browser localStorage under key 'sit_nexus_ado_pat' to persist across restarts
+ * - Preserved across browser close/reopen
+ * - Cleared immediately when manager clicks [ Disconnect ] via localStorage.removeItem('sit_nexus_ado_pat')
+ * - NEVER stored in PostgreSQL or server database
  * - NEVER logged to console, analytics, or error messages
- * - Automatically discarded when browser tab/session terminates
- * - Cleared immediately when manager clicks [ Disconnect ]
+ * - Masked for display in UI (e.g. ••••••••9918)
  */
 
-const PAT_SESSION_KEY = 'sit_nexus_ado_pat';
-const CONNECTION_SESSION_KEY = 'sit_nexus_ado_conn';
+const PAT_STORAGE_KEY = 'sit_nexus_ado_pat';
+const CONNECTION_STORAGE_KEY = 'sit_nexus_ado_conn';
 
 export interface StoredConnectionState {
   connected: boolean;
@@ -26,30 +26,42 @@ export interface StoredConnectionState {
 
 export class CredentialService {
   /**
-   * Retrieve active PAT from sessionStorage
+   * Retrieve active PAT from localStorage (with fallback migration from legacy sessionStorage)
    */
   public static getPat(): string | null {
     try {
-      return sessionStorage.getItem(PAT_SESSION_KEY);
+      const localPat = localStorage.getItem(PAT_STORAGE_KEY);
+      if (localPat) return localPat;
+
+      // Migrate from legacy sessionStorage if present
+      const sessionPat = sessionStorage.getItem(PAT_STORAGE_KEY);
+      if (sessionPat) {
+        localStorage.setItem(PAT_STORAGE_KEY, sessionPat);
+        sessionStorage.removeItem(PAT_STORAGE_KEY);
+        return sessionPat;
+      }
     } catch {
       return null;
     }
+    return null;
   }
 
   /**
-   * Save validated PAT to sessionStorage for the active browser session
+   * Save validated PAT to localStorage
    */
   public static setPat(pat: string): void {
     if (!pat) return;
     try {
-      sessionStorage.setItem(PAT_SESSION_KEY, pat.trim());
+      localStorage.setItem(PAT_STORAGE_KEY, pat.trim());
+      // Clean up legacy session storage if any
+      sessionStorage.removeItem(PAT_STORAGE_KEY);
     } catch {
-      console.warn('Session storage unavailable for temporary PAT cache.');
+      console.warn('Local storage unavailable for PAT cache.');
     }
   }
 
   /**
-   * Check if an active PAT is present in sessionStorage
+   * Check if an active PAT is present in localStorage
    */
   public static hasPat(): boolean {
     const pat = this.getPat();
@@ -57,11 +69,12 @@ export class CredentialService {
   }
 
   /**
-   * Remove PAT from sessionStorage (Disconnect)
+   * Remove PAT from localStorage (Disconnect)
    */
   public static clearPat(): void {
     try {
-      sessionStorage.removeItem(PAT_SESSION_KEY);
+      localStorage.removeItem(PAT_STORAGE_KEY);
+      sessionStorage.removeItem(PAT_STORAGE_KEY);
     } catch {
       // ignore
     }
@@ -72,7 +85,7 @@ export class CredentialService {
    */
   public static getConnection(): StoredConnectionState | null {
     try {
-      const raw = sessionStorage.getItem(CONNECTION_SESSION_KEY);
+      const raw = localStorage.getItem(CONNECTION_STORAGE_KEY) || sessionStorage.getItem(CONNECTION_STORAGE_KEY);
       if (raw) {
         return JSON.parse(raw);
       }
@@ -87,7 +100,7 @@ export class CredentialService {
    */
   public static setConnection(conn: StoredConnectionState): void {
     try {
-      sessionStorage.setItem(CONNECTION_SESSION_KEY, JSON.stringify(conn));
+      localStorage.setItem(CONNECTION_STORAGE_KEY, JSON.stringify(conn));
     } catch {
       // ignore
     }
@@ -98,7 +111,8 @@ export class CredentialService {
    */
   public static clearConnection(): void {
     try {
-      sessionStorage.removeItem(CONNECTION_SESSION_KEY);
+      localStorage.removeItem(CONNECTION_STORAGE_KEY);
+      sessionStorage.removeItem(CONNECTION_STORAGE_KEY);
     } catch {
       // ignore
     }
@@ -106,7 +120,7 @@ export class CredentialService {
 
   /**
    * Get masked representation of the active PAT for safe UI display (e.g. ••••••••9918)
-   * Never exposes plain text in UI, API responses, or logs (Section 6)
+   * Never exposes plain text in UI, API responses, or logs
    */
   public static getMaskedPat(): string | null {
     const pat = this.getPat();
@@ -117,7 +131,7 @@ export class CredentialService {
   }
 
   /**
-   * Disconnect completely: wipes PAT, metadata, and resets UI state (Section 5)
+   * Disconnect completely: wipes PAT from localStorage, metadata, and resets UI state
    */
   public static disconnect(): void {
     this.clearPat();

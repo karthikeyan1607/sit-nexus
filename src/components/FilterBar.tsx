@@ -39,7 +39,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onOpenProjectManager,
 }) => {
   return (
-    <section className="bg-neutral-900/90 border border-neutral-800 rounded-md p-4 sm:p-5 shadow-lg">
+    <section className="bg-neutral-900/90 border border-neutral-800 rounded-[14px] p-4 sm:p-5 shadow-lg">
       <div className="flex flex-col gap-4">
         
         {/* Core Steps 1 - 4: Dynamic Region, Project, Sprint, RUN QUERY */}
@@ -58,7 +58,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             </label>
             
             {/* Dynamic Region Interactive Segmented Buttons */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-neutral-950 border border-neutral-800 rounded">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-neutral-950 border border-neutral-800 rounded-[10px]">
               {/* Individual dynamic regions (India, Europe, USA, etc.) */}
               {dynamicRegions.map(({ region, count }) => {
                 const isActive = filter.region === region;
@@ -67,7 +67,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     key={region}
                     type="button"
                     onClick={() => onChangeFilter({ region })}
-                    className={`py-1.5 px-2 text-center rounded-sm transition-all flex flex-col items-center justify-center ${
+                    className={`py-1.5 px-2 text-center rounded-[10px] transition-all flex flex-col items-center justify-center ${
                       isActive
                         ? 'bg-[#FFCD11] text-neutral-950 shadow font-extrabold'
                         : 'text-neutral-300 hover:text-white hover:bg-neutral-850'
@@ -89,7 +89,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <button
                 type="button"
                 onClick={() => onChangeFilter({ region: 'All' })}
-                className={`py-1.5 px-2 text-center rounded-sm transition-all flex flex-col items-center justify-center ${
+                className={`py-1.5 px-2 text-center rounded-[10px] transition-all flex flex-col items-center justify-center ${
                   filter.region === 'All'
                     ? 'bg-[#FFCD11] text-neutral-950 shadow font-extrabold'
                     : 'text-neutral-300 hover:text-white hover:bg-neutral-850'
@@ -135,7 +135,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 id="project-select"
                 value={filter.project}
                 onChange={(e) => onChangeFilter({ project: e.target.value })}
-                className="w-full h-11 bg-neutral-950 border border-neutral-800 focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-semibold text-neutral-100 rounded px-3 py-2 appearance-none transition-colors cursor-pointer outline-none"
+                className="w-full h-11 bg-neutral-950 border border-neutral-800 focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-semibold text-neutral-100 rounded-lg px-3 py-2 appearance-none transition-colors cursor-pointer outline-none"
               >
                 <option value="All Projects" className="bg-neutral-900 text-neutral-100">
                   All Projects ({availableProjects.length} Tags)
@@ -169,7 +169,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 id="sprint-select"
                 value={filter.sprint}
                 onChange={(e) => onChangeFilter({ sprint: e.target.value })}
-                className="w-full h-11 bg-neutral-950 border border-neutral-800 focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-semibold text-neutral-100 rounded px-3 py-2 appearance-none transition-colors cursor-pointer outline-none"
+                className="w-full h-11 bg-neutral-950 border border-neutral-800 focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-semibold text-neutral-100 rounded-lg px-3 py-2 appearance-none transition-colors cursor-pointer outline-none"
               >
                 {AVAILABLE_SPRINTS.map((sprint) => (
                   <option key={sprint} value={sprint} className="bg-neutral-900 text-neutral-100">
@@ -194,7 +194,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               type="button"
               onClick={onRunQuery}
               disabled={isQuerying}
-              className="h-11 w-full flex items-center justify-center gap-2 bg-[#FFCD11] hover:bg-[#ffe169] active:bg-[#e0b206] text-neutral-950 font-black uppercase tracking-wider text-xs rounded transition-all shadow-md hover:shadow-lg disabled:opacity-60 cursor-pointer"
+              className="h-11 w-full flex items-center justify-center gap-2 bg-[#FFCD11] hover:bg-[#ffe169] active:bg-[#e0b206] text-neutral-950 font-black uppercase tracking-wider text-xs rounded-lg transition-all duration-150 shadow-xs hover:shadow-xs disabled:opacity-60 cursor-pointer"
             >
               <RefreshCw className={`w-4 h-4 ${isQuerying ? 'animate-spin' : ''}`} />
               <span>{isQuerying ? 'EXECUTING...' : 'RUN QUERY'}</span>
@@ -214,7 +214,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               placeholder="Search resource name, story title, work item #, or project tag..."
               value={filter.searchQuery}
               onChange={(e) => onChangeFilter({ searchQuery: e.target.value })}
-              className="w-full h-9 pl-9 pr-8 bg-neutral-950 border border-neutral-800 text-xs text-neutral-200 placeholder:text-neutral-500 rounded focus:outline-none focus:border-[#FFCD11] transition-colors"
+              className="w-full h-9 pl-9 pr-8 bg-neutral-950 border border-neutral-800 text-xs text-neutral-200 placeholder:text-neutral-500 rounded-lg focus:outline-none focus:border-[#FFCD11] transition-colors"
             />
             {filter.searchQuery && (
               <button
@@ -236,7 +236,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <select
                 value={filter.statusFilter}
                 onChange={(e) => onChangeFilter({ statusFilter: e.target.value })}
-                className="h-8 bg-neutral-950 border border-neutral-800 text-xs text-neutral-200 rounded px-2.5 outline-none focus:border-[#FFCD11] cursor-pointer"
+                className="h-8 bg-neutral-950 border border-neutral-800 text-xs text-neutral-200 rounded-lg px-2.5 outline-none focus:border-[#FFCD11] cursor-pointer"
               >
                 <option value="All">All Statuses</option>
                 <option value="Active">Active</option>

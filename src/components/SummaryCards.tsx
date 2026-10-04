@@ -22,7 +22,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
       
       {/* 1. Total Resources */}
-      <div className="bg-neutral-900 border-l-4 border-l-[#FFCD11] border-y border-r border-neutral-800 p-4 rounded-sm shadow-sm flex flex-col justify-between">
+      <div className="bg-neutral-900 border-l-4 border-l-[#FFCD11] border-y border-r border-neutral-800 p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col justify-between">
         <div className="flex items-center justify-between text-neutral-400">
           <span className="text-xs font-mono font-semibold uppercase tracking-wider">
             Total Resources
@@ -38,7 +38,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
       </div>
 
       {/* 2. Total Stories */}
-      <div className="bg-neutral-900 border-l-4 border-l-amber-500 border-y border-r border-neutral-800 p-4 rounded-sm shadow-sm flex flex-col justify-between">
+      <div className="bg-neutral-900 border-l-4 border-l-amber-500 border-y border-r border-neutral-800 p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col justify-between">
         <div className="flex items-center justify-between text-neutral-400">
           <span className="text-xs font-mono font-semibold uppercase tracking-wider">
             Total Stories
@@ -54,7 +54,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
       </div>
 
       {/* 3. Total Story Points */}
-      <div className="bg-neutral-900 border-l-4 border-l-sky-500 border-y border-r border-neutral-800 p-4 rounded-sm shadow-sm flex flex-col justify-between">
+      <div className="bg-neutral-900 border-l-4 border-l-sky-500 border-y border-r border-neutral-800 p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col justify-between">
         <div className="flex items-center justify-between text-neutral-400">
           <span className="text-xs font-mono font-semibold uppercase tracking-wider">
             Total Story Points
@@ -70,7 +70,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
       </div>
 
       {/* 4. Active Execution */}
-      <div className="bg-neutral-900 border-l-4 border-l-emerald-500 border-y border-r border-neutral-800 p-4 rounded-sm shadow-sm flex flex-col justify-between">
+      <div className="bg-neutral-900 border-l-4 border-l-emerald-500 border-y border-r border-neutral-800 p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col justify-between">
         <div className="flex items-center justify-between text-neutral-400">
           <span className="text-xs font-mono font-semibold uppercase tracking-wider">
             Active / In Flight
@@ -88,7 +88,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
       </div>
 
       {/* 5. Blocked / Standup Alerts */}
-      <div className={`p-4 rounded-sm shadow-sm flex flex-col justify-between border-l-4 border-y border-r transition-colors ${
+      <div className={`p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col justify-between border-l-4 border-y border-r transition-colors ${
         blockedCount > 0 
           ? 'bg-red-950/20 border-l-red-500 border-red-900/60 text-red-200' 
           : 'bg-neutral-900 border-l-neutral-700 border-neutral-800 text-neutral-400'

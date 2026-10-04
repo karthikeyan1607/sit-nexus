@@ -41,14 +41,61 @@ router.post('/', async (req: Request, res: Response) => {
   const org = String(activeManager.organization || 'cat-digital').trim();
   const proj = String(activeManager.project || 'Cat Digital').trim();
 
-  // Extract PAT from header (sessionStorage)
+  // Extract PAT from header (localStorage passed via x-ado-pat)
   const pat = (req.headers['x-ado-pat'] as string) || (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
   const hasLivePat = Boolean(pat && pat.trim().length > 0);
-  const isRealAzureMode = hasLivePat;
+  const dataSourceEnv = (process.env.DATA_SOURCE || 'azure').toLowerCase();
+  const isRealAzureMode = dataSourceEnv === 'azure' || hasLivePat;
 
   try {
     let result;
-    if (isRealAzureMode && pat) {
+    if (isRealAzureMode) {
+      if (!hasLivePat) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'AZURE_DEVOPS_NOT_CONNECTED',
+            message: 'Azure DevOps Personal Access Token (PAT) is required. Please connect your Azure DevOps account.',
+            statusCode: 401,
+          },
+          stories: [],
+          resources: [],
+          summary: {
+            totalResources: resourceMaster.length,
+            totalStories: 0,
+            totalStoryPoints: 0,
+            activePoints: 0,
+            completedPoints: 0,
+            blockedCount: 0,
+          },
+          durationMs: 0,
+          manager: {
+            name: activeManager.name,
+            organization: org,
+            project: proj,
+            isConnected: false,
+          },
+          diagnostics: {
+            organization: org,
+            project: proj,
+            workItemType: 'User Story',
+            areaPath: queryInput.areaPath || '',
+            iterationPath: queryInput.iterationPath || '',
+            region: targetRegion,
+            projectTag: targetProjectTag,
+            resourceMasterCount: resourceMaster.length,
+            regionResourceCount: 0,
+            generatedWiql: '',
+            returnedWorkItemIdsCount: 0,
+            workItemIds: [],
+            retrievedWorkItemsCount: 0,
+            matchedResourceCount: 0,
+            finalStoryCount: 0,
+            notes: 'Azure DevOps connection required. Enter PAT to query live work items.'
+          }
+        });
+      }
+
       result = await adoService.executeLiveAzureQuery(
         queryInput,
         resourceMaster,

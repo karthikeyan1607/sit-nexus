@@ -45,21 +45,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     };
   } | null>(null);
 
-  // Initialize session token if none exists but manager is connected in mock mode
-  useEffect(() => {
-    if (!CredentialService.hasPat() && activeManager.isConnected) {
-      CredentialService.setPat('demo-ado-pat-mock-token-9918');
-      CredentialService.setConnection({
-        connected: true,
-        organization: org,
-        project: project,
-        canRead: true,
-        canWrite: true,
-        lastValidatedAt: new Date().toISOString(),
-      });
-    }
-  }, [activeManager.isConnected, org, project]);
-
   // Handle Validate and Connect
   const handleValidateAndConnect = async () => {
     const tokenToValidate = patInput.trim();
@@ -168,18 +153,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setValidationResult(null);
   };
 
-  // Quick fill demo token
-  const handleFillDemoToken = () => {
-    setOrg('caterpillar');
-    setProject('CAT Digital');
-    setPatInput('ado-pat-demo-secret-key-9918');
-  };
-
   return (
     <div className="flex flex-col gap-5 max-w-4xl mx-auto w-full">
       
       {/* Top Header */}
-      <div className="bg-white border border-[#E5E7EB] p-5 rounded shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-between">
+      <div className="bg-white border border-[#E5E7EB] p-5 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-[#1F2937] tracking-tight">
             Azure DevOps Connection
@@ -190,12 +168,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {isConnected ? (
-          <span className="flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded">
+          <span className="flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>● Connected</span>
           </span>
         ) : (
-          <span className="flex items-center gap-1.5 text-xs font-mono font-semibold text-neutral-600 bg-neutral-100 border border-neutral-200 px-3 py-1 rounded">
+          <span className="flex items-center gap-1.5 text-xs font-mono font-semibold text-neutral-600 bg-neutral-100 border border-neutral-200 px-3 py-1 rounded-full">
             <span className="w-2 h-2 rounded-full bg-neutral-400" />
             <span>● Not Connected</span>
           </span>
@@ -203,7 +181,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* Main Connection Form Card (Sections 22, 26, 27) */}
-      <div className="bg-white border border-[#E5E7EB] p-6 rounded shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col gap-5">
+      <div className="bg-white border border-[#E5E7EB] p-6 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col gap-5">
         
         {/* Organization & Project Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -217,7 +195,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onChange={(e) => setOrg(e.target.value)}
               disabled={isConnected && !isReplacingPat}
               placeholder="e.g. caterpillar"
-              className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded text-xs text-[#1F2937] font-mono focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none disabled:bg-[#F9FAFB] disabled:text-[#6B7280] transition-all"
+              className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded-lg text-xs text-[#1F2937] font-mono focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none disabled:bg-[#F9FAFB] disabled:text-[#6B7280] transition-all"
             />
           </div>
 
@@ -231,13 +209,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onChange={(e) => setProject(e.target.value)}
               disabled={isConnected && !isReplacingPat}
               placeholder="e.g. CAT Digital"
-              className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded text-xs text-[#1F2937] font-mono focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none disabled:bg-[#F9FAFB] disabled:text-[#6B7280] transition-all"
+              className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded-lg text-xs text-[#1F2937] font-mono focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none disabled:bg-[#F9FAFB] disabled:text-[#6B7280] transition-all"
             />
           </div>
         </div>
 
         {/* Personal Access Token (PAT) Input Box */}
-        <div className="bg-[#F9FAFB] p-4 rounded border border-[#E5E7EB] flex flex-col gap-3">
+        <div className="bg-[#F9FAFB] p-4 rounded-[10px] border border-[#E5E7EB] flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-[#1F2937] flex items-center gap-1.5">
               <KeyRound className="w-3.5 h-3.5 text-[#1C1C1C]" />
@@ -250,7 +228,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsReplacingPat(true)}
-                  className="px-2.5 py-1 text-xs font-semibold bg-white border border-[#D1D5DB] hover:bg-[#F3F4F6] text-[#1F2937] rounded transition-colors flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 text-xs font-semibold bg-white border border-[#D1D5DB] hover:bg-[#F3F4F6] text-[#1F2937] rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <Key className="w-3 h-3 text-[#1C1C1C]" />
                   <span>Replace PAT</span>
@@ -258,7 +236,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={handleDisconnect}
-                  className="px-2.5 py-1 text-xs font-semibold bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 text-xs font-semibold bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <LogOut className="w-3 h-3 text-red-600" />
                   <span>Disconnect</span>
@@ -268,34 +246,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {isConnected && !isReplacingPat ? (
-            <div className="flex items-center justify-between bg-white border border-[#E5E7EB] p-2.5 rounded">
+            <div className="flex items-center justify-between bg-white border border-[#E5E7EB] p-2.5 rounded-lg">
               <div className="flex items-center gap-2.5 font-mono text-xs text-[#374151]">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 <span className="font-bold tracking-widest">{maskedPat}</span>
               </div>
-              <span className="text-[11px] font-mono text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              <span className="text-[11px] font-mono text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                 Connected
               </span>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  placeholder="Enter Personal Access Token..."
-                  value={patInput}
-                  onChange={(e) => setPatInput(e.target.value)}
-                  className="flex-1 h-9 px-3 bg-white border border-[#D1D5DB] rounded text-xs text-[#1F2937] font-mono focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={handleFillDemoToken}
-                  className="h-9 px-3 bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] border border-[#D1D5DB] rounded text-xs font-mono shrink-0 cursor-pointer"
-                  title="Fill sample token for testing"
-                >
-                  Fill Sample
-                </button>
-              </div>
+              <input
+                type="password"
+                placeholder="Enter Personal Access Token..."
+                value={patInput}
+                onChange={(e) => setPatInput(e.target.value)}
+                className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded-lg text-xs text-[#1F2937] font-mono focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none transition-all"
+              />
 
               {isReplacingPat && (
                 <div className="flex justify-end">
@@ -317,7 +285,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {/* Validation Result Banner */}
         {validationResult && (
-          <div className={`p-3.5 rounded border text-xs font-mono flex flex-col gap-1.5 ${
+          <div className={`p-3.5 rounded-lg border text-xs font-mono flex flex-col gap-1.5 ${
             validationResult.success 
               ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
               : 'bg-red-50 border-red-200 text-red-800'
@@ -346,7 +314,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="button"
               onClick={handleValidateAndConnect}
               disabled={isValidating}
-              className="h-9 px-6 bg-[#FFCC00] hover:bg-[#F2C200] text-[#1C1C1C] font-bold text-xs uppercase rounded transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="h-9 px-6 bg-[#FFCC00] hover:bg-[#F2C200] text-[#1C1C1C] font-bold text-xs uppercase rounded-lg transition-colors shadow-xs flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isValidating ? 'animate-spin' : ''}`} />
               <span>{isValidating ? 'Connecting...' : 'Connect'}</span>

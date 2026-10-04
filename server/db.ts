@@ -239,7 +239,26 @@ class DatabaseService {
         const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
         const parsed = JSON.parse(raw);
         if (parsed.managers && parsed.resources) {
-          if (parsed.resources.length < INITIAL_RESOURCES.length) {
+          // Check if resources have old demo names that need removal
+          const demoNames = new Set([
+            'murali', 'priya sharma', 'rajesh kumar', 'sneha patel', 'anand varma',
+            'arun prakash', 'deepa krishnan', 'ganesh iyer', 'harish nair', 'ishita roy',
+            'kavitha sundaram', 'manoj pillai', 'naveen reddy', 'pooja hegde', 'rahul deshmukh',
+            'sanjay gupta', 'tanvi sen', 'uday kiran', 'varun joshi', 'vidya venkatesh',
+            'vikram seth', 'vivek nambiar', 'praveenraj', 'pragadeesh', 'muralidharan j',
+            'yevhen', 'elena rostova', 'sven lindqvist', 'marcus weber', 'astrid olsen',
+            'bastian koch', 'camille dubois', 'daria nowak', 'filip hansen', 'lars berg',
+            'matteo rossi', 'nathalie meyer', 'piotr kowalski', 'john', 'david miller',
+            'emily chen', 'john bradley', 'aaron brooks', 'blake morrison', 'chloe taylor',
+            'derek vance', 'grace harrison', 'jessica vance', 'logan hayes', 'mason cooper',
+            'rachel adams', 'tyler jenkins', 'wyatt russell'
+          ]);
+
+          const hasOldDemoData = parsed.resources.some((r: any) => 
+            demoNames.has(normalize(r.name))
+          );
+
+          if (hasOldDemoData || parsed.resources.length === 0) {
             parsed.resources = INITIAL_RESOURCES.map((r) => ({
               id: r.id,
               name: r.name,
@@ -253,12 +272,27 @@ class DatabaseService {
               updated_at: new Date().toISOString(),
             }));
             this.saveToDisk(parsed);
+          } else {
+            // Deduplicate by case-insensitive name & email
+            const seen = new Set<string>();
+            const deduped: StoredResource[] = [];
+            for (const r of parsed.resources) {
+              const key = `${normalize(r.name)}_${normalize(r.email)}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                deduped.push(r);
+              }
+            }
+            if (deduped.length !== parsed.resources.length) {
+              parsed.resources = deduped;
+              this.saveToDisk(parsed);
+            }
           }
           if (!parsed.closureAuditLog) {
             parsed.closureAuditLog = DEFAULT_AUDIT_LOG;
           }
           if (!parsed.dataSource) {
-            parsed.dataSource = (process.env.DATA_SOURCE as 'mock' | 'azure') || 'mock';
+            parsed.dataSource = (process.env.DATA_SOURCE as 'mock' | 'azure') || 'azure';
           }
           // Ensure managers don't have legacy encryptedPat
           parsed.managers = parsed.managers.map((m: Record<string, unknown>) => {

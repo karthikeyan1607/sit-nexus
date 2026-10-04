@@ -23,11 +23,16 @@ import {
   executeSprintQueryApi,
   updateStoryApi,
   getAreaPathsApi,
-  switchDataSourceModeApi,
   ManagerProfileDTO
 } from './utils/api';
 import { exportStoriesToCsv } from './utils/storage';
-import { INITIAL_RESOURCES, INITIAL_STORIES } from './data/mockAdoData';
+import { INITIAL_RESOURCES } from './data/mockAdoData';
+import { 
+  getStoredResourceMaster, 
+  saveStoredResourceMaster, 
+  clearStoredResourceMaster, 
+  getDynamicRegions 
+} from './utils/resourceMaster';
 import { MainNavTab } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
@@ -64,13 +69,16 @@ export default function App() {
     lastValidatedAt: new Date().toISOString(),
   });
 
-  // Resource Master State
-  const [resourceMaster, setResourceMaster] = useState<ResourceRecord[]>(INITIAL_RESOURCES);
-  const [dynamicRegions, setDynamicRegions] = useState<{ region: string; count: number }[]>([
-    { region: 'India', count: 25 },
-    { region: 'Europe', count: 13 },
-    { region: 'USA', count: 15 },
-  ]);
+  // Resource Master State (Restored from browser localStorage key 'sit_nexus_resource_master')
+  const [resourceMaster, setResourceMaster] = useState<ResourceRecord[]>(() => {
+    const stored = typeof window !== 'undefined' ? getStoredResourceMaster() : null;
+    return stored && stored.length > 0 ? stored : INITIAL_RESOURCES;
+  });
+  const [dynamicRegions, setDynamicRegions] = useState<{ region: string; count: number }[]>(() => {
+    const stored = typeof window !== 'undefined' ? getStoredResourceMaster() : null;
+    const base = stored && stored.length > 0 ? stored : INITIAL_RESOURCES;
+    return getDynamicRegions(base);
+  });
 
   // Project Tags state
   const [projectConfigs, setProjectConfigs] = useState<ProjectTagConfig[]>([
@@ -104,8 +112,8 @@ export default function App() {
   ]);
   const [queryWarnings, setQueryWarnings] = useState<string[]>([]);
 
-  // Stories backlog & grouped resources state
-  const [stories, setStories] = useState<WorkItemStory[]>(INITIAL_STORIES);
+  // Stories backlog & grouped resources state (populated via Azure DevOps query)
+  const [stories, setStories] = useState<WorkItemStory[]>([]);
   const [resourceGroups, setResourceGroups] = useState<ResourceGroup[]>([]);
   const [summaryMetrics, setSummaryMetrics] = useState({
     totalResources: 0,
@@ -163,12 +171,21 @@ export default function App() {
           setAvailableAreaPaths(areaData.areaPaths);
         }
 
-        // Fetch Resources
-        const resData = await getResourcesApi().catch(() => null);
-        if (resData?.resources) {
-          setResourceMaster(resData.resources);
-          if (resData.dynamicRegions) {
-            setDynamicRegions(resData.dynamicRegions);
+        // Check localStorage for sit_nexus_resource_master first (Requirement 5)
+        const storedRes = getStoredResourceMaster();
+        if (storedRes && storedRes.length > 0) {
+          setResourceMaster(storedRes);
+          setDynamicRegions(getDynamicRegions(storedRes));
+          // Synchronize stored Resource Master with backend query engine
+          replaceResourcesApi(storedRes).catch(() => {});
+        } else {
+          // If no stored Resource Master exists in localStorage, fetch initial backend resources
+          const resData = await getResourcesApi().catch(() => null);
+          if (resData?.resources) {
+            setResourceMaster(resData.resources);
+            if (resData.dynamicRegions) {
+              setDynamicRegions(resData.dynamicRegions);
+            }
           }
         }
 
@@ -247,19 +264,6 @@ export default function App() {
       showToast(`Query error: ${msg}`);
     } finally {
       setIsQuerying(false);
-    }
-  };
-
-  // Toggle between MOCK MODE and REAL AZURE DEVOPS MODE (Section 46)
-  const handleToggleMode = async () => {
-    const nextMode = dataSource === 'mock' ? 'azure' : 'mock';
-    try {
-      await switchDataSourceModeApi(nextMode);
-      setDataSource(nextMode);
-      showToast(`Switched to ${nextMode === 'azure' ? 'REAL AZURE DEVOPS' : 'MOCK'} MODE`);
-      handleRunQuery();
-    } catch {
-      showToast('Failed to switch data source mode.');
     }
   };
 
@@ -372,10 +376,14 @@ export default function App() {
   };
 
   // ==========================================
-  // Resource Master Management via Backend API
+  // Resource Master Management via Backend API & LocalStorage Persistence
   // ==========================================
   const handleReplaceResourceMaster = async (newResources: ResourceRecord[]) => {
     try {
+      // 1. Immediately store in browser localStorage under key 'sit_nexus_resource_master' (Requirement 1 & 2)
+      saveStoredResourceMaster(newResources);
+
+      // 2. Synchronize with backend API
       await replaceResourcesApi(newResources);
       const data = await getResourcesApi();
       setResourceMaster(data.resources);
@@ -383,14 +391,20 @@ export default function App() {
       showToast(`Resource Master replaced successfully with ${data.resources.length} resources!`);
       handleRunQuery();
     } catch (err: unknown) {
-      showToast('Failed to replace Resource Master on server.');
+      setResourceMaster(newResources);
+      setDynamicRegions(getDynamicRegions(newResources));
+      showToast(`Resource Master saved locally (${newResources.length} resources).`);
     }
   };
 
   const handleUpdateResource = async (updated: ResourceRecord) => {
     try {
       await updateResourceApi(updated.id, updated);
-      setResourceMaster((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      setResourceMaster((prev) => {
+        const next = prev.map((r) => (r.id === updated.id ? updated : r));
+        saveStoredResourceMaster(next);
+        return next;
+      });
       showToast(`Updated resource "${updated.name}"`);
     } catch (err) {
       showToast('Failed to update resource on server.');
@@ -400,7 +414,15 @@ export default function App() {
   const handleDeleteResource = async (id: string) => {
     try {
       await deleteResourceApi(id);
-      setResourceMaster((prev) => prev.filter((r) => r.id !== id));
+      setResourceMaster((prev) => {
+        const next = prev.filter((r) => r.id !== id);
+        if (next.length === 0) {
+          clearStoredResourceMaster();
+        } else {
+          saveStoredResourceMaster(next);
+        }
+        return next;
+      });
       showToast('Resource deleted from Resource Master.');
       handleRunQuery();
     } catch (err) {
@@ -411,7 +433,11 @@ export default function App() {
   const handleAddResource = async (newRes: Omit<ResourceRecord, 'id'>) => {
     try {
       const res = await addResourceApi(newRes);
-      setResourceMaster((prev) => [res.resource, ...prev]);
+      setResourceMaster((prev) => {
+        const next = [res.resource, ...prev];
+        saveStoredResourceMaster(next);
+        return next;
+      });
       showToast(`Resource "${res.resource.name}" added to ${res.resource.region} team.`);
     } catch (err) {
       showToast('Failed to add resource.');
@@ -419,16 +445,22 @@ export default function App() {
   };
 
   const handleResetResourceMaster = async () => {
-    if (!confirm('Reset Resource Master to factory baseline (53 enterprise resources)?')) return;
+    if (!confirm('Clear uploaded Resource Master and reset to default?')) return;
     try {
+      // Clear from browser localStorage (Requirement 16)
+      clearStoredResourceMaster();
+
       await resetResourcesApi();
       const data = await getResourcesApi();
       setResourceMaster(data.resources);
       setDynamicRegions(data.dynamicRegions);
-      showToast('Restored baseline 53 enterprise resources.');
+      showToast('Cleared uploaded Resource Master from local storage.');
       handleRunQuery();
     } catch (err) {
-      showToast('Failed to reset resources.');
+      clearStoredResourceMaster();
+      setResourceMaster(INITIAL_RESOURCES);
+      setDynamicRegions(getDynamicRegions(INITIAL_RESOURCES));
+      showToast('Cleared Resource Master.');
     }
   };
 
@@ -546,7 +578,6 @@ export default function App() {
           currentSprint={filter.sprint}
           activeManager={activeManager}
           dataSource={dataSource}
-          onToggleMode={handleToggleMode}
           onOpenSettings={() => setActiveTab('settings')}
           onTriggerEasterEgg={() => setIsEasterEggOpen(true)}
         />
@@ -642,7 +673,7 @@ export default function App() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-neutral-900 border-2 border-[#FFCD11] text-white px-4 py-3 rounded-sm shadow-2xl flex items-center gap-2 text-xs font-mono animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-6 right-6 z-50 bg-neutral-900 border-2 border-[#FFCD11] text-white px-4 py-3 rounded-lg shadow-2xl flex items-center gap-2 text-xs font-mono animate-in fade-in slide-in-from-bottom-2">
           <CheckCircle2 className="w-4 h-4 text-[#FFCD11] shrink-0" />
           <span>{toastMessage}</span>
         </div>

@@ -62,7 +62,7 @@ export const ResourceView: React.FC<ResourceViewProps> = ({
           return (
             <div
               key={res.name}
-              className={`bg-neutral-900 border rounded-sm transition-all shadow-sm ${
+              className={`bg-neutral-900 border rounded-xl transition-all shadow-[0_1px_3px_rgba(0,0,0,0.04)] ${
                 res.hasBlockers
                   ? 'border-red-900/70 hover:border-red-600'
                   : res.isReviewed
@@ -74,7 +74,7 @@ export const ResourceView: React.FC<ResourceViewProps> = ({
               <div className="p-4 border-b border-neutral-800/90 bg-neutral-950/40 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   {/* Avatar / Monogram */}
-                  <div className={`w-10 h-10 rounded flex items-center justify-center font-bold text-sm font-mono border ${
+                  <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center font-bold text-sm font-mono border ${
                     res.isReviewed 
                       ? 'bg-emerald-950 text-emerald-300 border-emerald-700' 
                       : 'bg-neutral-800 text-[#FFCD11] border-neutral-700'
@@ -114,7 +114,7 @@ export const ResourceView: React.FC<ResourceViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onToggleReviewed(res.name)}
-                    className={`flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold tracking-wider uppercase rounded transition-colors ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase rounded-lg transition-colors cursor-pointer ${
                       res.isReviewed
                         ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/80'
                         : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white border border-neutral-700'
@@ -170,7 +170,7 @@ export const ResourceView: React.FC<ResourceViewProps> = ({
                             {story.tag && (
                               <>
                                 <span className="text-neutral-600">·</span>
-                                <span className="text-[11px] text-neutral-400">
+                                <span className="text-[10px] text-neutral-400 font-mono bg-neutral-950 px-1.5 py-0.5 rounded-md border border-neutral-800">
                                   {story.tag}
                                 </span>
                               </>
@@ -201,7 +201,7 @@ export const ResourceView: React.FC<ResourceViewProps> = ({
                             <select
                               value={story.status}
                               onChange={(e) => onUpdateStatus(story.id, e.target.value as StoryStatus)}
-                              className={`text-xs font-mono font-semibold py-1 px-2 rounded border appearance-none cursor-pointer outline-none transition-colors ${
+                              className={`text-xs font-mono font-semibold py-1 px-2 rounded-lg border appearance-none cursor-pointer outline-none transition-colors ${
                                 story.status === 'Active'
                                   ? 'bg-amber-950/40 text-amber-300 border-amber-800'
                                   : story.status === 'New'
@@ -219,7 +219,7 @@ export const ResourceView: React.FC<ResourceViewProps> = ({
                             </select>
 
                             {/* Points Display */}
-                            <span className="text-xs font-mono font-bold text-white bg-neutral-800 px-2 py-1 rounded border border-neutral-700">
+                            <span className="text-xs font-mono font-bold text-white bg-neutral-800 px-2.5 py-1 rounded-lg border border-neutral-700">
                               {story.storyPoints} pts
                             </span>
                           </div>
@@ -233,7 +233,7 @@ export const ResourceView: React.FC<ResourceViewProps> = ({
 
                       {/* Standup Notes or Blocker alerts if present */}
                       {(story.standupNotes || story.blockedReason) && (
-                        <div className={`mt-1 text-xs p-2 rounded border text-left ${
+                        <div className={`mt-1 text-xs p-2.5 rounded-lg border text-left ${
                           story.status === 'Blocked' || story.blockedReason
                             ? 'bg-red-950/30 border-red-900/60 text-red-300'
                             : 'bg-neutral-950 border-neutral-800 text-neutral-300'

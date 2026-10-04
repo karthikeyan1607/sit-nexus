@@ -32,6 +32,7 @@ import {
 } from '../types';
 import { AVAILABLE_SPRINTS } from '../data/mockAdoData';
 import { normalize } from '../utils/normalize';
+import { RegionFlag } from './RegionFlag';
 
 interface DashboardViewProps {
   filter: FilterState;
@@ -95,20 +96,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }));
   };
 
-  // Flag emojis for visual region identification
-  const getRegionFlag = (region: unknown) => {
-    switch (normalize(region)) {
-      case 'india':
-        return '🇮🇳';
-      case 'europe':
-        return '🇪🇺';
-      case 'usa':
-        return '🇺🇸';
-      default:
-        return '🌎';
-    }
-  };
-
   // Professional subtle badge styling as specified in UI/UX Design System
   const renderStatusBadge = (status: StoryStatus) => {
     let classes = 'bg-gray-100 text-gray-700 border-gray-200';
@@ -127,7 +114,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
 
     return (
-      <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded border ${classes}`}>
+      <span className={`inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${classes}`}>
         {status}
       </span>
     );
@@ -139,7 +126,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* ------------------------------------------------ */}
       {/* 1. QUERY CONTROL BAR                             */}
       {/* ------------------------------------------------ */}
-      <section className="bg-white border border-[#E5E7EB] rounded p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col gap-4">
+      <section className="bg-white border border-[#E5E7EB] rounded-[14px] p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col gap-4">
         
         {/* Step 1: Region Prominent Selector (4 compact cards) */}
         <div className="flex flex-col gap-1.5">
@@ -161,7 +148,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   key={region}
                   type="button"
                   onClick={() => onChangeFilter({ region })}
-                  className={`p-3 rounded text-left transition-all border flex items-center justify-between cursor-pointer ${
+                  className={`p-3 rounded-[10px] text-left transition-all border flex items-center justify-between cursor-pointer ${
                     isSelected
                       ? 'bg-[#FEF9C3]/50 border-[#FFCD11] shadow-xs'
                       : 'bg-white hover:bg-[#F9FAFB] border-[#E5E7EB] text-[#4B5563]'
@@ -169,7 +156,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 >
                   <div className="flex flex-col">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#1F2937] flex items-center gap-1.5">
-                      <span>{getRegionFlag(region)}</span>
+                      <RegionFlag region={region} size={18} />
                       <span>{region}</span>
                     </span>
                     <span className="text-[11px] text-[#6B7280] font-mono mt-0.5">
@@ -188,7 +175,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={() => onChangeFilter({ region: 'All' })}
-              className={`p-3 rounded text-left transition-all border flex items-center justify-between cursor-pointer ${
+              className={`p-3 rounded-[10px] text-left transition-all border flex items-center justify-between cursor-pointer ${
                 normalize(filter.region) === 'all'
                   ? 'bg-[#FEF9C3]/50 border-[#FFCD11] shadow-xs'
                   : 'bg-white hover:bg-[#F9FAFB] border-[#E5E7EB] text-[#4B5563]'
@@ -196,7 +183,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               <div className="flex flex-col">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#1F2937] flex items-center gap-1.5">
-                  <span>🌎</span>
+                  <RegionFlag region="All" size={18} />
                   <span>All</span>
                 </span>
                 <span className="text-[11px] text-[#6B7280] font-mono mt-0.5">
@@ -225,7 +212,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               value={filter.areaPath || ''}
               onChange={(e) => onChangeFilter({ areaPath: e.target.value })}
               placeholder="Enter Azure DevOps Area Path"
-              className="w-full h-9 bg-white border border-[#D1D5DB] focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-mono font-medium text-[#1F2937] placeholder:text-[#9CA3AF] rounded px-3 py-1.5 outline-none transition-all"
+              className="w-full h-9 bg-white border border-[#D1D5DB] focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-mono font-medium text-[#1F2937] placeholder:text-[#9CA3AF] rounded-lg px-3 py-1.5 outline-none transition-all"
             />
           </div>
 
@@ -242,7 +229,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               value={filter.iterationPath || ''}
               onChange={(e) => onChangeFilter({ iterationPath: e.target.value, sprint: e.target.value })}
               placeholder="Enter Azure DevOps Iteration Path"
-              className="w-full h-9 bg-white border border-[#D1D5DB] focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-mono font-medium text-[#1F2937] placeholder:text-[#9CA3AF] rounded px-3 py-1.5 outline-none transition-all"
+              className="w-full h-9 bg-white border border-[#D1D5DB] focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-mono font-medium text-[#1F2937] placeholder:text-[#9CA3AF] rounded-lg px-3 py-1.5 outline-none transition-all"
             />
           </div>
 
@@ -256,7 +243,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <select
                 value={filter.project}
                 onChange={(e) => onChangeFilter({ project: e.target.value })}
-                className="w-full h-9 bg-white border border-[#D1D5DB] focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-semibold text-[#1F2937] rounded px-3 py-1.5 appearance-none outline-none cursor-pointer transition-all"
+                className="w-full h-9 bg-white border border-[#D1D5DB] focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-semibold text-[#1F2937] rounded-lg px-3 py-1.5 appearance-none outline-none cursor-pointer transition-all"
               >
                 <option value="All Projects">All Projects ({availableProjects.length} Tags)</option>
                 {availableProjects.map((proj) => (
@@ -277,7 +264,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               type="button"
               onClick={onRunQuery}
               disabled={isQuerying}
-              className="w-full h-9 bg-[#FFCC00] hover:bg-[#F2C200] active:bg-[#E5B800] text-[#1C1C1C] font-black uppercase text-xs tracking-wider rounded transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="w-full h-9 bg-[#FFCC00] hover:bg-[#F2C200] active:bg-[#E5B800] text-[#1C1C1C] font-black uppercase text-xs tracking-wider rounded-lg transition-all duration-150 shadow-xs hover:shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isQuerying ? 'animate-spin' : ''}`} />
               <span>{isQuerying ? 'FETCHING...' : 'RUN QUERY'}</span>
@@ -288,7 +275,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Identity Warnings Banner (Section 13 & 31) */}
         {warnings && warnings.length > 0 && (
-          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded flex items-start gap-2.5 text-xs text-amber-900 animate-in fade-in">
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-[10px] flex items-start gap-2.5 text-xs text-amber-900 animate-in fade-in">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Identity Mapping Notice:</span>
@@ -309,7 +296,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         
         {/* Card 1: Resources */}
-        <div className="bg-white border border-[#E5E7EB] border-t-3 border-t-[#1C1C1C] p-4 rounded shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div className="bg-white border border-[#E5E7EB] border-t-3 border-t-[#1C1C1C] p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col justify-between">
           <span className="text-[11px] font-mono uppercase tracking-wider text-[#6B7280] font-semibold">
             Resources
           </span>
@@ -322,7 +309,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Card 2: Stories */}
-        <div className="bg-white border border-[#E5E7EB] border-t-3 border-t-[#FFCC00] p-4 rounded shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div className="bg-white border border-[#E5E7EB] border-t-3 border-t-[#FFCC00] p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col justify-between">
           <span className="text-[11px] font-mono uppercase tracking-wider text-[#6B7280] font-semibold">
             Stories
           </span>
@@ -335,7 +322,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Card 3: Story Points */}
-        <div className="bg-white border border-[#E5E7EB] border-t-3 border-t-[#3B82F6] p-4 rounded shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div className="bg-white border border-[#E5E7EB] border-t-3 border-t-[#3B82F6] p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col justify-between">
           <span className="text-[11px] font-mono uppercase tracking-wider text-[#6B7280] font-semibold">
             Story Points
           </span>
@@ -350,7 +337,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </section>
 
       {/* Standup Daily Clearance Progress Bar */}
-      <div className="bg-white border border-[#E5E7EB] rounded px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+      <div className="bg-white border border-[#E5E7EB] rounded-[10px] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
         <div className="flex items-center gap-3">
           <span className="font-mono text-[#6B7280] uppercase text-[11px] font-semibold flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-[#1C1C1C]" />
@@ -385,7 +372,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* ------------------------------------------------ */}
       {/* 3. SEARCH & VIEW CONTROLS                        */}
       {/* ------------------------------------------------ */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-[#E5E7EB] p-2.5 rounded shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-[#E5E7EB] p-2.5 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
         
         {/* Search Field (Section 9) */}
         <div className="relative flex-1 max-w-md">
@@ -395,7 +382,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             placeholder="Search resource, story title or ID..."
             value={filter.searchQuery}
             onChange={(e) => onChangeFilter({ searchQuery: e.target.value })}
-            className="w-full h-9 pl-8 pr-7 bg-[#F9FAFB] border border-[#E5E7EB] text-xs text-[#1F2937] placeholder:text-[#9CA3AF] rounded focus:bg-white focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none transition-colors font-mono"
+            className="w-full h-9 pl-8 pr-7 bg-[#F9FAFB] border border-[#E5E7EB] text-xs text-[#1F2937] placeholder:text-[#9CA3AF] rounded-lg focus:bg-white focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none transition-colors font-mono"
           />
           {filter.searchQuery && (
             <button
@@ -415,7 +402,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             type="button"
             onClick={onOpenStandupRunner}
-            className="h-9 px-3.5 bg-[#FFCD11] hover:bg-[#F2C200] active:bg-[#E5B800] text-[#1C1C1C] text-xs font-bold rounded transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
+            className="h-9 px-3.5 bg-[#FFCD11] hover:bg-[#F2C200] active:bg-[#E5B800] text-[#1C1C1C] text-xs font-bold rounded-lg transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
             <Play className="w-3.5 h-3.5 fill-[#1C1C1C] text-[#1C1C1C]" />
             <span>Standup Facilitator</span>
@@ -425,7 +412,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             type="button"
             onClick={() => setShowDiagnostics((prev) => !prev)}
-            className={`h-9 px-3 text-xs font-semibold rounded border transition-colors flex items-center gap-1.5 cursor-pointer ${
+            className={`h-9 px-3 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 cursor-pointer ${
               showDiagnostics
                 ? 'bg-[#FEF9C3] text-[#854D0E] border-[#FFCD11] font-bold'
                 : 'bg-white text-[#4B5563] border-[#E5E7EB] hover:bg-[#F9FAFB] hover:text-[#1F2937]'
@@ -437,11 +424,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
 
           {/* View Mode Toggle */}
-          <div className="h-9 flex items-center bg-[#F5F6F7] border border-[#E5E7EB] rounded p-0.5">
+          <div className="h-9 flex items-center bg-[#F5F6F7] border border-[#E5E7EB] rounded-lg p-0.5">
             <button
               type="button"
               onClick={() => setViewMode('resource')}
-              className={`h-7.5 flex items-center gap-1 px-2.5 text-xs font-semibold rounded-sm transition-all cursor-pointer ${
+              className={`h-7.5 flex items-center gap-1 px-2.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                 viewMode === 'resource'
                   ? 'bg-white text-[#1F2937] shadow-xs font-bold'
                   : 'text-[#6B7280] hover:text-[#1F2937]'
@@ -454,7 +441,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`h-7.5 flex items-center gap-1 px-2.5 text-xs font-semibold rounded-sm transition-all cursor-pointer ${
+              className={`h-7.5 flex items-center gap-1 px-2.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                 viewMode === 'table'
                   ? 'bg-white text-[#1F2937] shadow-xs font-bold'
                   : 'text-[#6B7280] hover:text-[#1F2937]'
@@ -469,7 +456,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             type="button"
             onClick={onExportCsv}
-            className="h-9 px-3 bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded text-xs font-semibold text-[#4B5563] hover:text-[#1F2937] transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="h-9 px-3 bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg text-xs font-semibold text-[#4B5563] hover:text-[#1F2937] transition-colors flex items-center gap-1.5 cursor-pointer"
             title="Export Backlog to CSV"
           >
             <Download className="w-3.5 h-3.5" />
@@ -484,7 +471,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* QUERY DIAGNOSTICS & FILTER ISOLATION (Sec 16, 17)*/}
       {/* ------------------------------------------------ */}
       {(showDiagnostics || (resources.length === 0 && diagnostics)) && diagnostics && (
-        <section className="bg-white border-2 border-[#1C1C1C] rounded p-4 sm:p-5 shadow-sm text-xs font-mono animate-in fade-in">
+        <section className="bg-white border-2 border-[#1C1C1C] rounded-[14px] p-4 sm:p-5 shadow-sm text-xs font-mono animate-in fade-in">
           <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3 mb-3">
             <div className="flex items-center gap-2">
               <Terminal className="w-4 h-4 text-[#1C1C1C]" />
@@ -500,7 +487,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   setCopiedWiql(true);
                   setTimeout(() => setCopiedWiql(false), 2000);
                 }}
-                className="flex items-center gap-1 px-2.5 py-1 bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] rounded text-[11px] font-semibold cursor-pointer"
+                className="flex items-center gap-1 px-2.5 py-1 bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] rounded-lg text-[11px] font-semibold cursor-pointer"
               >
                 {copiedWiql ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedWiql ? 'Copied WIQL' : 'Copy WIQL'}</span>
@@ -509,7 +496,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Grid of Section 16 Query Diagnostics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#F9FAFB] p-3 rounded border border-[#E5E7EB] mb-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#F9FAFB] p-3 rounded-[10px] border border-[#E5E7EB] mb-3">
             <div>
               <span className="text-[#6B7280] block text-[10px] uppercase font-bold">Organization</span>
               <span className="text-[#111827] font-semibold">{diagnostics.organization || 'cat-digital'}</span>
@@ -558,22 +545,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Section 17 Filter Isolation Debugging results */}
           {diagnostics.filterIsolation && (
-            <div className="border border-[#E5E7EB] rounded p-3 bg-white">
+            <div className="border border-[#E5E7EB] rounded-[10px] p-3 bg-white">
               <div className="font-bold text-[#111827] mb-2 flex items-center gap-1.5 text-xs">
                 <span>Filter Isolation Debugging Sequence (Section 17):</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
-                <div className="p-2 bg-[#F3F4F6] rounded">
+                <div className="p-2 bg-[#F3F4F6] rounded-lg">
                   <span className="block text-[#6B7280] font-bold">TEST A</span>
                   <span className="text-[10px] text-[#4B5563] block">Project + User Story</span>
                   <span className="text-sm font-bold text-[#111827]">{diagnostics.filterIsolation.testA} items</span>
                 </div>
-                <div className="p-2 bg-[#F3F4F6] rounded">
+                <div className="p-2 bg-[#F3F4F6] rounded-lg">
                   <span className="block text-[#6B7280] font-bold">TEST B</span>
                   <span className="text-[10px] text-[#4B5563] block">+ Iteration Path</span>
                   <span className="text-sm font-bold text-[#111827]">{diagnostics.filterIsolation.testB} items</span>
                 </div>
-                <div className="p-2 bg-[#F3F4F6] rounded">
+                <div className="p-2 bg-[#F3F4F6] rounded-lg">
                   <span className="block text-[#6B7280] font-bold">TEST C</span>
                   <span className="text-[10px] text-[#4B5563] block">+ Area Path</span>
                   <span className="text-sm font-bold text-[#111827]">{diagnostics.filterIsolation.testC} items</span>
@@ -581,7 +568,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <span className="text-[9px] text-[#2563EB] block">({diagnostics.filterIsolation.testCUnder} under)</span>
                   )}
                 </div>
-                <div className="p-2 bg-[#F3F4F6] rounded">
+                <div className="p-2 bg-[#F3F4F6] rounded-lg">
                   <span className="block text-[#6B7280] font-bold">TEST D</span>
                   <span className="text-[10px] text-[#4B5563] block">Area + Iteration</span>
                   <span className="text-sm font-bold text-[#111827]">{diagnostics.filterIsolation.testD} items</span>
@@ -589,7 +576,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <span className="text-[9px] text-[#2563EB] block">({diagnostics.filterIsolation.testDUnder} under)</span>
                   )}
                 </div>
-                <div className="p-2 bg-[#F3F4F6] rounded">
+                <div className="p-2 bg-[#F3F4F6] rounded-lg">
                   <span className="block text-[#6B7280] font-bold">TEST E</span>
                   <span className="text-[10px] text-[#4B5563] block">+ Project Tag</span>
                   <span className="text-sm font-bold text-[#111827]">{diagnostics.filterIsolation.testE ?? 'N/A'}</span>
@@ -599,7 +586,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
 
           {diagnostics.notes && (
-            <div className="mt-2 text-[11px] text-[#047857] bg-emerald-50 p-2 rounded border border-emerald-200">
+            <div className="mt-2 text-[11px] text-[#047857] bg-emerald-50 p-2 rounded-lg border border-emerald-200">
               💡 {diagnostics.notes}
             </div>
           )}
@@ -610,13 +597,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 4. RESULT VIEW: RESOURCE VIEW OR TABLE VIEW      */}
       {/* ------------------------------------------------ */}
       {isQuerying ? (
-        <div className="bg-white border border-[#E5E7EB] rounded p-12 text-center shadow-sm">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-12 text-center shadow-xs">
           <RefreshCw className="w-6 h-6 animate-spin text-[#FFCC00] mx-auto mb-2" />
           <p className="text-xs text-[#6B7280] font-mono">Fetching stories...</p>
         </div>
       ) : resources.length === 0 ? (
         /* Professional Empty State (Prompt Section 3) */
-        <div className="bg-white border border-[#E5E7EB] rounded-lg p-12 text-center shadow-xs flex flex-col items-center max-w-lg mx-auto my-6">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-12 text-center shadow-xs flex flex-col items-center max-w-lg mx-auto my-6">
           <div className="w-11 h-11 rounded-full bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center text-[#64748B] mb-3 shadow-2xs">
             <Users className="w-5 h-5 text-[#64748B]" />
           </div>
@@ -627,7 +614,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             type="button"
             onClick={() => onChangeFilter({ region: 'All', project: 'All Projects' })}
-            className="mt-4 px-3.5 py-1.5 bg-[#FFCD11] hover:bg-[#F2C200] active:scale-[0.98] text-[#1C1C1C] text-xs font-mono font-bold uppercase rounded transition-all shadow-xs cursor-pointer"
+            className="mt-4 px-3.5 py-1.5 bg-[#FFCD11] hover:bg-[#F2C200] active:scale-[0.98] text-[#1C1C1C] text-xs font-mono font-bold uppercase rounded-lg transition-all shadow-xs cursor-pointer"
           >
             Reset Filters
           </button>
@@ -643,7 +630,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             return (
               <div
                 key={res.name}
-                className="bg-white border border-[#E5E7EB] hover:border-[#D1D5DB] rounded shadow-[0_1px_2px_rgba(0,0,0,0.02)] overflow-hidden transition-all"
+                className="bg-white border border-[#E5E7EB] hover:border-[#D1D5DB] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden transition-all"
               >
                 {/* Resource Header */}
                 <div 
@@ -652,7 +639,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 >
                   <div className="flex items-center gap-3">
                     {/* Compact Initial Monogram */}
-                    <div className="w-7 h-7 rounded bg-[#FEF9C3] border border-[#FFCD11] text-[#854D0E] flex items-center justify-center font-mono font-bold text-xs shrink-0">
+                    <div className="w-7 h-7 rounded-lg bg-[#FEF9C3] border border-[#FFCD11] text-[#854D0E] flex items-center justify-center font-mono font-bold text-xs shrink-0">
                       {(res.name || 'UN').slice(0, 2).toUpperCase()}
                     </div>
 
@@ -681,7 +668,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         e.stopPropagation();
                         onToggleReviewed(res.name);
                       }}
-                      className={`text-[11px] font-semibold px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                         res.isReviewed 
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold' 
                           : 'bg-white border border-[#D1D5DB] text-[#4B5563] hover:text-[#111827] hover:bg-[#F9FAFB]'
@@ -724,7 +711,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           </span>
 
                           {story.tag && (
-                            <span className="text-[10px] text-[#4B5563] font-mono bg-[#F3F4F6] px-1.5 py-0.5 rounded border border-[#E5E7EB] shrink-0">
+                            <span className="text-[10px] text-[#4B5563] font-mono bg-[#F3F4F6] px-1.5 py-0.5 rounded-md border border-[#E5E7EB] shrink-0">
                               {story.tag}
                             </span>
                           )}
@@ -755,7 +742,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         /* ============================================== */
         /* DETAILED TABLE VIEW (Section 8: Specified Columns) */
         /* ============================================== */
-        <div className="bg-white border border-[#E5E7EB] rounded shadow-sm overflow-hidden flex flex-col">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>

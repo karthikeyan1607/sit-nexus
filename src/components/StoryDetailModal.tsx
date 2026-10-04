@@ -57,7 +57,7 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
       <div 
-        className="bg-neutral-900 border border-neutral-700 w-full max-w-2xl rounded-sm shadow-2xl overflow-hidden my-8"
+        className="bg-neutral-900 border border-neutral-700 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden my-8"
         role="dialog"
         aria-modal="true"
       >
@@ -77,7 +77,7 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-neutral-400 hover:text-white p-1 rounded hover:bg-neutral-800 transition-colors"
+            className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -102,7 +102,7 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
           </div>
 
           {/* Quick Attributes Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-neutral-950 p-3 rounded border border-neutral-800 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-neutral-950 p-3 rounded-[10px] border border-neutral-800 text-xs">
             <div>
               <span className="text-[10px] font-mono uppercase text-neutral-500 block mb-0.5">Assigned To</span>
               <span className="font-semibold text-neutral-200">{story.assignedTo}</span>
@@ -121,7 +121,7 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
                 max="40"
                 value={storyPoints}
                 onChange={(e) => setStoryPoints(Number(e.target.value))}
-                className="w-16 bg-neutral-900 border border-neutral-700 text-neutral-100 font-mono font-bold px-2 py-0.5 rounded outline-none focus:border-[#FFCD11]"
+                className="w-16 bg-neutral-900 border border-neutral-700 text-neutral-100 font-mono font-bold px-2 py-0.5 rounded-lg outline-none focus:border-[#FFCD11]"
               />
             </div>
 
@@ -130,7 +130,7 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as StoryStatus)}
-                className="w-full bg-neutral-900 border border-neutral-700 text-neutral-100 font-mono text-xs font-semibold px-2 py-1 rounded outline-none focus:border-[#FFCD11]"
+                className="w-full bg-neutral-900 border border-neutral-700 text-neutral-100 font-mono text-xs font-semibold px-2 py-1 rounded-lg outline-none focus:border-[#FFCD11]"
               >
                 <option value="New">New</option>
                 <option value="Active">Active</option>
@@ -148,7 +148,7 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
                 <FileText className="w-3.5 h-3.5 text-[#FFCD11]" />
                 <span>Description</span>
               </span>
-              <div className="bg-neutral-950 p-3.5 rounded border border-neutral-800 text-xs text-neutral-300 leading-relaxed">
+              <div className="bg-neutral-950 p-3.5 rounded-[10px] border border-neutral-800 text-xs text-neutral-300 leading-relaxed">
                 {story.description}
               </div>
             </div>
@@ -160,7 +160,7 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Acceptance Criteria</span>
               </span>
-              <div className="bg-neutral-950 p-3.5 rounded border border-neutral-800 text-xs text-neutral-300 leading-relaxed font-mono">
+              <div className="bg-neutral-950 p-3.5 rounded-[10px] border border-neutral-800 text-xs text-neutral-300 leading-relaxed font-mono">
                 {story.acceptanceCriteria}
               </div>
             </div>
@@ -176,13 +176,13 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
               value={standupNotes}
               onChange={(e) => setStandupNotes(e.target.value)}
               placeholder="e.g., Code reviewed; awaiting DLMA schema merge by 2 PM..."
-              className="w-full bg-neutral-950 border border-neutral-800 focus:border-[#FFCD11] p-3 text-xs text-neutral-100 rounded outline-none font-sans"
+              className="w-full bg-neutral-950 border border-neutral-800 focus:border-[#FFCD11] p-3 text-xs text-neutral-100 rounded-lg outline-none font-sans"
             />
           </div>
 
           {/* Blocker Reason if Blocked */}
           {(status === 'Blocked' || blockedReason) && (
-            <div className="flex flex-col gap-1.5 bg-red-950/20 p-3 rounded border border-red-900/60">
+            <div className="flex flex-col gap-1.5 bg-red-950/20 p-3 rounded-[10px] border border-red-900/60">
               <span className="text-xs font-mono uppercase tracking-wider text-red-400 font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-red-400" />
                 <span>Blocker Details (Manager Action Needed)</span>
@@ -192,7 +192,7 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
                 value={blockedReason}
                 onChange={(e) => setBlockedReason(e.target.value)}
                 placeholder="What is blocking this story? (e.g., Pending firewall rule approval, API credentials expired)..."
-                className="w-full bg-neutral-950 border border-red-900/70 focus:border-red-500 p-2.5 text-xs text-red-200 rounded outline-none font-sans"
+                className="w-full bg-neutral-950 border border-red-900/70 focus:border-red-500 p-2.5 text-xs text-red-200 rounded-lg outline-none font-sans"
               />
             </div>
           )}
@@ -211,7 +211,7 @@ export const StoryDetailModal: React.FC<StoryDetailModalProps> = ({
           <button
             type="button"
             onClick={handleSave}
-            className="flex items-center gap-2 px-5 py-2 bg-[#FFCD11] hover:bg-[#ffe169] text-neutral-950 font-bold uppercase tracking-wider text-xs rounded transition-colors shadow"
+            className="flex items-center gap-2 px-5 py-2 bg-[#FFCD11] hover:bg-[#ffe169] text-neutral-950 font-bold uppercase tracking-wider text-xs rounded-lg transition-colors shadow"
           >
             <Save className="w-4 h-4" />
             <span>Save Updates to SIT Nexus</span>

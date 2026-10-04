@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { 
   CheckCircle2,
-  Cpu,
-  User,
   Calendar
 } from 'lucide-react';
 import { MainNavTab } from './Header';
@@ -85,41 +83,25 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Data Source & Contextual Controls */}
+      {/* Right: Azure DevOps Connection Status */}
       <div className="flex items-center gap-2.5 text-xs font-mono">
         
-        {/* Active Manager context (Requirement 18 - preserved) */}
-        {activeManager && (
-          <div 
-            onClick={onOpenSettings}
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-[#F9FAFB] hover:bg-[#F3F4F6] border border-[#E5E7EB] rounded text-[#374151] cursor-pointer transition-all duration-150 ease-out text-[11px]"
-            title={`Active Manager: ${activeManager.name} (${activeManager.region})`}
-          >
-            <User className="w-3 h-3 text-[#6B7280]" />
-            <span className="font-sans font-medium truncate max-w-[130px]">{activeManager.name}</span>
-          </div>
-        )}
-
-        {/* Data Source Mode Indicator */}
+        {/* Real Azure DevOps Indicator */}
         <button
           type="button"
-          onClick={onToggleMode || onOpenSettings}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] border font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer ${
-            dataSource === 'azure'
-              ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
-              : 'bg-[#FEF9C3]/70 hover:bg-[#FEF9C3] text-[#854D0E] border-[#FEF08A]'
-          }`}
-          title="Click to toggle between Mock Mode and Real Azure DevOps Mode"
+          onClick={onOpenSettings}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] border font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+          title="SIT Nexus Real Azure DevOps REST API Integration"
         >
-          <span className={`w-1.5 h-1.5 rounded-full ${dataSource === 'azure' ? 'bg-blue-600 animate-pulse' : 'bg-[#CA8A04]'}`} />
-          <span>{dataSource === 'azure' ? 'AZURE DEVOPS' : 'MOCK MODE'}</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+          <span>REAL AZURE DEVOPS</span>
         </button>
 
         {/* Connection Status Indicator */}
         <button 
           type="button"
           onClick={onOpenSettings}
-          className="h-8 flex items-center gap-1.5 px-3 bg-[#F9FAFB] hover:bg-[#F3F4F6] border border-[#E5E7EB] rounded text-[#374151] cursor-pointer transition-all duration-150 ease-out active:scale-[0.98] text-[11px]"
+          className="h-8 flex items-center gap-1.5 px-3 bg-[#F9FAFB] hover:bg-[#F3F4F6] border border-[#E5E7EB] rounded-lg text-[#374151] cursor-pointer transition-all duration-150 ease-out active:scale-[0.98] text-[11px]"
           title={isConnected ? "Azure DevOps Connected" : "Azure DevOps Not Connected - Click to configure"}
         >
           {isConnected ? (

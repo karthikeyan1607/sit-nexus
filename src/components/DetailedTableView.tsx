@@ -65,7 +65,7 @@ export const DetailedTableView: React.FC<DetailedTableViewProps> = ({
   };
 
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded shadow-xs overflow-hidden flex flex-col">
+    <div className="bg-white border border-[#E5E7EB] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
       {/* Table Header Bar */}
       <div className="p-3.5 border-b border-[#F1F3F5] bg-[#FAFAFA] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -73,7 +73,7 @@ export const DetailedTableView: React.FC<DetailedTableViewProps> = ({
             Detailed Sprint Backlog
           </h3>
           <span className="text-[#D1D5DB]">/</span>
-          <span className="text-xs text-[#854D0E] font-mono font-bold bg-[#FEF9C3] px-2 py-0.5 rounded border border-[#FEF08A]">
+          <span className="text-xs text-[#854D0E] font-mono font-bold bg-[#FEF9C3] px-2.5 py-0.5 rounded-full border border-[#FEF08A]">
             {stories.length} Work Items
           </span>
         </div>
@@ -81,7 +81,7 @@ export const DetailedTableView: React.FC<DetailedTableViewProps> = ({
         <button
           type="button"
           onClick={onExportCsv}
-          className="h-8 flex items-center gap-1.5 px-3 text-xs font-semibold text-[#4B5563] hover:text-[#111827] bg-white hover:bg-[#F9FAFB] border border-[#D1D5DB] rounded transition-colors cursor-pointer"
+          className="h-8 flex items-center gap-1.5 px-3 text-xs font-semibold text-[#4B5563] hover:text-[#111827] bg-white hover:bg-[#F9FAFB] border border-[#D1D5DB] rounded-lg transition-colors cursor-pointer"
         >
           <FileSpreadsheet className="w-3.5 h-3.5 text-[#1C1C1C]" />
           <span>Export Table to CSV</span>
@@ -238,7 +238,7 @@ export const DetailedTableView: React.FC<DetailedTableViewProps> = ({
                       <select
                         value={story.status}
                         onChange={(e) => onUpdateStatus(story.id, e.target.value as StoryStatus)}
-                        className={`text-[11px] font-mono font-semibold py-0.5 px-2 rounded border appearance-none cursor-pointer outline-none transition-colors ${
+                        className={`text-[11px] font-mono font-semibold py-0.5 px-2 rounded-lg border appearance-none cursor-pointer outline-none transition-colors ${
                           story.status === 'Active'
                             ? 'bg-red-50 text-red-700 border-red-200'
                             : story.status === 'New'
@@ -269,7 +269,7 @@ export const DetailedTableView: React.FC<DetailedTableViewProps> = ({
                     {/* Tag */}
                     <td className="py-2.5 px-3.5 whitespace-nowrap">
                       {story.tag ? (
-                        <span className="text-[10px] text-[#4B5563] font-mono bg-[#F5F6F7] px-1.5 py-0.5 rounded border border-[#E5E7EB]">
+                        <span className="text-[10px] text-[#4B5563] font-mono bg-[#F5F6F7] px-1.5 py-0.5 rounded-md border border-[#E5E7EB]">
                           {story.tag}
                         </span>
                       ) : (

@@ -1,15 +1,15 @@
 import { WorkItemStory, ResourceRecord, ProjectTagConfig } from '../types';
 
-// Initial resource for a fresh SIT Nexus installation.
-// Real Resource Master uploads replace this data.
+// Initial single default resource for fresh installations:
+// India: 1, Europe: 0, USA: 0 = 1 total
 export const INITIAL_RESOURCES: ResourceRecord[] = [
-  {
-    id: 'res-in-01',
-    name: 'Karthikeyan R',
-    region: 'India',
-    email: 'karthikeyan.r@cat.com',
-    status: 'Active'
-  }
+  { 
+    id: 'res-in-01', 
+    name: 'Karthikeyan R', 
+    region: 'India', 
+    email: 'karthikeyan.r@cat.com', 
+    status: 'Active' 
+  },
 ];
 
 export const INITIAL_STORIES: WorkItemStory[] = [
@@ -20,7 +20,7 @@ export const INITIAL_STORIES: WorkItemStory[] = [
     assignedTo: 'Karthikeyan',
     resourceEmail: 'karthikeyan@cat.com',
     region: 'India',
-    project: 'Customer',
+    project: 'Customer', // Derived from Tag: Customer
     sprint: 'Sprint 19',
     status: 'Internal Review',
     storyPoints: 5,
@@ -38,7 +38,7 @@ export const INITIAL_STORIES: WorkItemStory[] = [
     assignedTo: 'Karthikeyan',
     resourceEmail: 'karthikeyan@cat.com',
     region: 'India',
-    project: 'Admin Tool',
+    project: 'Admin Tool', // Derived from Tag: Admin Tool
     sprint: 'Sprint 19',
     status: 'New',
     storyPoints: 3,
@@ -57,7 +57,7 @@ export const INITIAL_STORIES: WorkItemStory[] = [
     assignedTo: 'Karthikeyan',
     resourceEmail: 'karthikeyan@cat.com',
     region: 'India',
-    project: 'Access Management',
+    project: 'Access Management', // Multi-project proof
     sprint: 'Sprint 19',
     status: 'Active',
     storyPoints: 5,

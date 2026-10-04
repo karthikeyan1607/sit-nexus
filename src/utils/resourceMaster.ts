@@ -9,36 +9,89 @@ import {
 import { INITIAL_RESOURCES } from '../data/mockAdoData';
 import { normalize } from './normalize';
 
-const RESOURCE_MASTER_KEY = 'sit_nexus_resource_master_v2';
+const RESOURCE_MASTER_STORAGE_KEY = 'sit_nexus_resource_master';
 const PROJECT_TAGS_CONFIG_KEY = 'sit_nexus_project_tags_v1';
 
-export function loadResourceMaster(): ResourceRecord[] {
+export { RESOURCE_MASTER_STORAGE_KEY };
+
+/**
+ * Retrieve saved Resource Master from browser localStorage
+ */
+export function getStoredResourceMaster(): ResourceRecord[] | null {
   try {
-    const raw = localStorage.getItem(RESOURCE_MASTER_KEY);
-    if (!raw) {
-      localStorage.setItem(RESOURCE_MASTER_KEY, JSON.stringify(INITIAL_RESOURCES));
-      return INITIAL_RESOURCES;
-    }
+    const raw = localStorage.getItem(RESOURCE_MASTER_STORAGE_KEY);
+    if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      // Deduplicate by case-insensitive name & email to prevent duplicate records
+      const seen = new Set<string>();
+      const deduped: ResourceRecord[] = [];
+      for (const r of parsed) {
+        if (!r || typeof r !== 'object') continue;
+        const key = `${normalize(r.name)}_${normalize(r.email)}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduped.push({
+            id: r.id || `res-${deduped.length + 1}`,
+            name: String(r.name || '').trim(),
+            region: String(r.region || '').trim(),
+            email: String(r.email || '').trim(),
+            status: (r.status || 'Active') as 'Active' | 'Inactive',
+          });
+        }
+      }
+      return deduped.length > 0 ? deduped : null;
     }
   } catch (err) {
-    console.error('Error loading resource master:', err);
+    console.error('Error loading resource master from localStorage:', err);
+  }
+  return null;
+}
+
+/**
+ * Save normalized Resource Master records to browser localStorage
+ */
+export function saveStoredResourceMaster(resources: ResourceRecord[]): void {
+  try {
+    if (!resources || !Array.isArray(resources)) return;
+    const cleanList: ResourceRecord[] = resources.map((r, i) => ({
+      id: r.id || `res-${i + 1}`,
+      name: String(r.name || '').trim(),
+      region: String(r.region || '').trim(),
+      email: String(r.email || '').trim(),
+      status: (r.status || 'Active') as 'Active' | 'Inactive',
+    }));
+    localStorage.setItem(RESOURCE_MASTER_STORAGE_KEY, JSON.stringify(cleanList));
+  } catch (err) {
+    console.error('Error saving resource master to localStorage:', err);
+  }
+}
+
+/**
+ * Explicitly clear Resource Master from browser localStorage
+ */
+export function clearStoredResourceMaster(): void {
+  try {
+    localStorage.removeItem(RESOURCE_MASTER_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function loadResourceMaster(): ResourceRecord[] {
+  const stored = getStoredResourceMaster();
+  if (stored && stored.length > 0) {
+    return stored;
   }
   return INITIAL_RESOURCES;
 }
 
 export function saveResourceMaster(resources: ResourceRecord[]): void {
-  try {
-    localStorage.setItem(RESOURCE_MASTER_KEY, JSON.stringify(resources));
-  } catch (err) {
-    console.error('Error saving resource master:', err);
-  }
+  saveStoredResourceMaster(resources);
 }
 
 export function resetResourceMasterToDefault(): ResourceRecord[] {
-  localStorage.setItem(RESOURCE_MASTER_KEY, JSON.stringify(INITIAL_RESOURCES));
+  clearStoredResourceMaster();
   return INITIAL_RESOURCES;
 }
 
