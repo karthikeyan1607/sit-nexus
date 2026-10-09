@@ -245,9 +245,8 @@ export default function App() {
       });
 
       // Capture unmatched identity warnings if present (Section 13)
-      if ((response as unknown as { warnings?: string[] }).warnings) {
-        setQueryWarnings((response as unknown as { warnings: string[] }).warnings);
-      }
+      const warningsList = (response as unknown as { warnings?: string[] }).warnings || [];
+      setQueryWarnings([...warningsList]);
 
       const duration = Math.round(performance.now() - start);
       setQueryStats({

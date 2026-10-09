@@ -5,17 +5,13 @@ import {
   ChevronRight, 
   CheckCircle2, 
   AlertTriangle, 
-  Timer, 
-  Clock, 
   Hash, 
-  Play, 
-  Pause, 
-  RotateCcw,
   User,
   Check
 } from 'lucide-react';
 import { ResourceGroup, WorkItemStory, StoryStatus } from '../types';
 import { SitNexusBrandLockup } from './SitNexusBrandLockup';
+import { Footer } from './Footer';
 
 interface StandupRunnerModalProps {
   resources: ResourceGroup[];
@@ -35,27 +31,11 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
   onSelectStory,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [timerSeconds, setTimerSeconds] = useState(90);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
 
   const currentResource = resources[currentIndex];
 
-  // Standup speaker timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isTimerRunning && timerSeconds > 0) {
-      interval = setInterval(() => {
-        setTimerSeconds((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning, timerSeconds]);
-
-  // Reset timer on speaker change
   const handleSelectSpeaker = (index: number) => {
     setCurrentIndex(index);
-    setTimerSeconds(90);
-    setIsTimerRunning(true);
   };
 
   // Complete facilitator session and navigate to Dashboard
@@ -64,7 +44,6 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
       if (currentResource && !currentResource.isReviewed) {
         onToggleReviewed(currentResource.name);
       }
-      setIsTimerRunning(false);
       if (onFinish) {
         onFinish();
       } else {
@@ -130,12 +109,6 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
     );
   }
 
-  const formatTimer = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#F3F4F6] text-[#1F2937] select-none">
       
@@ -161,37 +134,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
           </div>
         </div>
 
-        {/* Center: Timer widget */}
-        <div className="flex items-center gap-3 bg-[#F9FAFB] px-3.5 py-1.5 rounded-lg border border-[#E5E7EB]">
-          <Timer className="w-4 h-4 text-[#D97706]" />
-          <span className={`font-mono text-sm font-bold ${timerSeconds <= 15 ? 'text-red-600 animate-pulse' : 'text-[#1F2937]'}`}>
-            {formatTimer(timerSeconds)}
-          </span>
-
-          <div className="flex items-center gap-1 ml-1">
-            <button
-              type="button"
-              onClick={() => setIsTimerRunning(!isTimerRunning)}
-              className="p-1 text-[#4B5563] hover:text-[#1F2937] transition-colors cursor-pointer"
-              title={isTimerRunning ? 'Pause' : 'Start'}
-            >
-              {isTimerRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTimerSeconds(90);
-                setIsTimerRunning(false);
-              }}
-              className="p-1 text-[#9CA3AF] hover:text-[#4B5563] transition-colors cursor-pointer"
-              title="Reset timer to 90s"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Right: Close Standup */}
+        {/* Right: Close Standup & Keyboard Shortcuts */}
         <div className="flex items-center gap-3">
           <span className="hidden md:inline text-[11px] text-[#9CA3AF] font-mono">
             Keys: ← Prev | → Next | Esc Exit
@@ -289,7 +232,8 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
                     <select
                       value={story.status}
                       onChange={(e) => onUpdateStatus(story.id, e.target.value as StoryStatus)}
-                      className={`text-xs font-mono font-bold py-1.5 px-3 rounded-lg border appearance-none cursor-pointer outline-none transition-colors ${
+                      aria-label="Story Status"
+                      className={`text-xs font-mono font-bold py-1.5 px-3 min-w-[110px] rounded-lg border appearance-none cursor-pointer outline-none transition-colors ${
                         story.status === 'Active'
                           ? 'bg-red-50 text-red-700 border-red-300'
                           : story.status === 'New'
@@ -303,7 +247,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
                           : 'bg-red-100 text-red-800 border-red-400 font-bold'
                       }`}
                     >
-                      <option value="Active" className="bg-white text-[#1F2937]">Active</option>
+                      <option value="Active" className="bg-white text-[#1F2937]">In Progress</option>
                       <option value="New" className="bg-white text-[#1F2937]">New</option>
                       <option value="Internal Review" className="bg-white text-[#1F2937]">Internal Review</option>
                       <option value="Resolved" className="bg-white text-[#1F2937]">Resolved</option>
@@ -341,6 +285,7 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
             <select
               value={currentIndex}
               onChange={(e) => handleSelectSpeaker(Number(e.target.value))}
+              aria-label="Jump to Resource"
               className="bg-white border border-[#D1D5DB] text-xs font-semibold text-[#1F2937] py-1.5 px-3 rounded-lg outline-none cursor-pointer focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] transition-all"
             >
               {resources.map((r, i) => (
@@ -362,10 +307,9 @@ export const StandupRunnerModal: React.FC<StandupRunnerModalProps> = ({
 
         </div>
 
-        {/* Subtle Non-intrusive Facilitator Footer */}
-        <div className="mt-3 text-[11px] text-[#9CA3AF] font-sans text-center select-none flex flex-col items-center gap-0.5">
-          <div>&copy; {new Date().getFullYear()} Caterpillar Inc. All rights reserved. &bull; SIT Nexus &bull; Made by SIT Energizers</div>
-          <div className="text-[9.5px] text-[#9CA3AF] tracking-wide">Karthikeyan</div>
+        {/* Facilitator Footer using consistent Footer component */}
+        <div className="mt-3">
+          <Footer className="border-0 bg-transparent py-1 shadow-none" />
         </div>
 
       </div>

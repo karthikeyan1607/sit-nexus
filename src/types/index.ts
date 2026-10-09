@@ -84,13 +84,39 @@ export interface AdoConnectionConfig {
   lastSyncTimestamp: string | null;
 }
 
+export interface SprintClosureAuditDetailRecord {
+  id: string;
+  audit_id: string;
+  story_id: number;
+  story_title?: string;
+  resource_name: string;
+  region?: string;
+  project?: string;
+  tag?: string;
+  iteration_path?: string;
+  area_path?: string;
+  previous_state: string;
+  requested_state?: string;
+  actual_state?: string;
+  new_state: string;
+  story_points?: number;
+  executing_user?: string;
+  status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
+  error_message?: string;
+  processed_at: string;
+}
+
 export interface SprintClosureAuditRecord {
   id: string;
+  manager_id?: string;
   managerName: string;
+  manager_name?: string;
   date: string;
   time: string;
   sprint: string;
   region: string;
+  area_path?: string;
+  action?: string;
   actionType: string;
   totalStories: number;
   totalPoints: number;
@@ -101,6 +127,7 @@ export interface SprintClosureAuditRecord {
   updatedItemIds?: number[];
   executedAt: string;
   status?: 'SUCCESS' | 'PARTIAL_SUCCESS' | 'FAILED';
+  details?: SprintClosureAuditDetailRecord[];
 }
 
 export interface SprintClosurePreview {

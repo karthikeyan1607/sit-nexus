@@ -23,21 +23,6 @@ export const SitNexusBrandLockup: React.FC<SitNexusBrandLockupProps> = ({
   const logoHeight = size === 'sm' ? 30 : size === 'lg' ? 44 : 36;
   const scale = size === 'sm' ? 0.95 : size === 'lg' ? 1.25 : 1.08;
 
-  // Slanted Industrial Stripe (Yellow top, dark bottom)
-  const diagonalStripeSvg = (
-    <svg
-      width={Math.round(20 * scale)}
-      height={Math.round(36 * scale)}
-      viewBox="0 0 20 36"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="shrink-0"
-    >
-      <polygon points="5,0 14,0 19,23 10,23" fill="#FFCD11" />
-      <polygon points="10,23 19,23 22,36 13,36" fill="#1F2937" />
-    </svg>
-  );
-
   const sitNexusContent = (
     <div className="flex flex-col justify-center leading-none">
       <div className="flex items-baseline gap-1.5 font-sans">
@@ -77,8 +62,7 @@ export const SitNexusBrandLockup: React.FC<SitNexusBrandLockupProps> = ({
           <CaterpillarLogo height={logoHeight} />
         </div>
 
-        <div className="flex items-center gap-2 pt-1 border-t border-[#F1F3F5]">
-          {diagonalStripeSvg}
+        <div className="flex items-center gap-2 pt-1.5 border-t border-[#F1F3F5]">
           {sitNexusContent}
         </div>
       </div>
@@ -93,7 +77,6 @@ export const SitNexusBrandLockup: React.FC<SitNexusBrandLockupProps> = ({
     >
       <CaterpillarLogo height={logoHeight} />
       <div className="h-6 w-[1px] bg-[#E5E7EB] shrink-0" />
-      {diagonalStripeSvg}
       {sitNexusContent}
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   AlertTriangle, 
@@ -17,7 +17,14 @@ import {
   Terminal,
   ShieldCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Search,
+  Filter,
+  Eye,
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 import { 
   WorkItemStory, 
@@ -33,6 +40,27 @@ import {
 } from '../utils/api';
 import { AVAILABLE_SPRINTS } from '../data/mockAdoData';
 import { normalize } from '../utils/normalize';
+
+export interface AuditStoryRow {
+  uniqueKey: string;
+  auditId: string;
+  storyId: number;
+  title: string;
+  resource: string;
+  region: string;
+  projectTag: string;
+  sprint: string;
+  areaPath: string;
+  previousStatus: string;
+  requestedStatus: string;
+  resultingStatus: string;
+  storyPoints: number;
+  closureTime: string;
+  closureDateRaw: string;
+  executedBy: string;
+  result: 'Success' | 'Failed' | 'Skipped';
+  errorMessage?: string;
+}
 
 interface SprintClosureViewProps {
   dynamicRegions: { region: string; count: number }[];
@@ -93,6 +121,18 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'closure' | 'history'>('closure');
   const [auditHistory, setAuditHistory] = useState<SprintClosureAuditRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  // Audit Trail Search & Filters
+  const [auditSearchQuery, setAuditSearchQuery] = useState('');
+  const [auditSprintFilter, setAuditSprintFilter] = useState('All');
+  const [auditRegionFilter, setAuditRegionFilter] = useState('All');
+  const [auditTagFilter, setAuditTagFilter] = useState('All');
+  const [auditResultFilter, setAuditResultFilter] = useState<'All' | 'Success' | 'Failed' | 'Skipped'>('All');
+  const [auditDateFilter, setAuditDateFilter] = useState('');
+  const [auditCurrentPage, setAuditCurrentPage] = useState(1);
+  const [selectedAuditRecord, setSelectedAuditRecord] = useState<AuditStoryRow | null>(null);
+  const auditPageSize = 10;
 
   // Load preview when filters change
   useEffect(() => {
@@ -133,14 +173,215 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
 
   const fetchAuditHistory = async () => {
     setIsLoadingHistory(true);
+    setHistoryError(null);
     try {
       const res = await getClosureHistoryApi();
       setAuditHistory(res.history || []);
-    } catch (err) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error('Failed to fetch closure history:', err);
+      setHistoryError(msg);
     } finally {
       setIsLoadingHistory(false);
     }
+  };
+
+  // Flatten batch audit history into individual story-level audit records (Requirement 5.1 & 5.2)
+  const flatAuditStories = useMemo<AuditStoryRow[]>(() => {
+    const rows: AuditStoryRow[] = [];
+    for (const rec of auditHistory) {
+      if (rec.details && rec.details.length > 0) {
+        for (const d of rec.details) {
+          rows.push({
+            uniqueKey: d.id || `${rec.id}-${d.story_id}`,
+            auditId: rec.id,
+            storyId: d.story_id,
+            title: d.story_title || `Story #${d.story_id}`,
+            resource: d.resource_name || 'Unassigned',
+            region: d.region || rec.region || 'All',
+            projectTag: d.tag || d.project || '—',
+            sprint: d.iteration_path || rec.sprint,
+            areaPath: d.area_path || rec.area_path || '—',
+            previousStatus: d.previous_state || 'Internal Review',
+            requestedStatus: d.requested_state || 'Closed',
+            resultingStatus: d.actual_state || d.new_state || (d.status === 'SUCCESS' ? 'Closed' : d.previous_state || 'Internal Review'),
+            storyPoints: d.story_points ?? 0,
+            closureTime: d.processed_at ? new Date(d.processed_at).toLocaleString() : `${rec.date} ${rec.time}`,
+            closureDateRaw: d.processed_at || rec.executedAt || rec.date,
+            executedBy: d.executing_user || rec.managerName || rec.manager_name || 'Manager',
+            result: d.status === 'SUCCESS' ? 'Success' : d.status === 'SKIPPED' ? 'Skipped' : 'Failed',
+            errorMessage: d.error_message,
+          });
+        }
+      } else {
+        // Fallback for older records without details
+        if (rec.failedItems && rec.failedItems.length > 0) {
+          for (const item of rec.failedItems) {
+            rows.push({
+              uniqueKey: `${rec.id}-${item.id}-failed`,
+              auditId: rec.id,
+              storyId: item.id,
+              title: item.title || `Story #${item.id}`,
+              resource: rec.managerName || '—',
+              region: rec.region,
+              projectTag: '—',
+              sprint: rec.sprint,
+              areaPath: rec.area_path || '—',
+              previousStatus: 'Internal Review',
+              requestedStatus: 'Closed',
+              resultingStatus: 'Internal Review',
+              storyPoints: 0,
+              closureTime: rec.executedAt ? new Date(rec.executedAt).toLocaleString() : `${rec.date} ${rec.time}`,
+              closureDateRaw: rec.executedAt || rec.date,
+              executedBy: rec.managerName || 'Manager',
+              result: 'Failed',
+              errorMessage: item.reason,
+            });
+          }
+        }
+        if (rec.updatedItemIds && rec.updatedItemIds.length > 0) {
+          for (const id of rec.updatedItemIds) {
+            rows.push({
+              uniqueKey: `${rec.id}-${id}-success`,
+              auditId: rec.id,
+              storyId: id,
+              title: `User Story #${id}`,
+              resource: 'Team Resource',
+              region: rec.region,
+              projectTag: '—',
+              sprint: rec.sprint,
+              areaPath: rec.area_path || '—',
+              previousStatus: 'Internal Review',
+              requestedStatus: 'Closed',
+              resultingStatus: 'Closed',
+              storyPoints: 0,
+              closureTime: rec.executedAt ? new Date(rec.executedAt).toLocaleString() : `${rec.date} ${rec.time}`,
+              closureDateRaw: rec.executedAt || rec.date,
+              executedBy: rec.managerName || 'Manager',
+              result: 'Success',
+            });
+          }
+        }
+      }
+    }
+    return rows;
+  }, [auditHistory]);
+
+  // Dynamic filter dropdown options based on recorded history
+  const availableAuditSprints = useMemo(() => {
+    const set = new Set<string>();
+    flatAuditStories.forEach((r) => { if (r.sprint) set.add(r.sprint); });
+    return Array.from(set).sort();
+  }, [flatAuditStories]);
+
+  const availableAuditRegions = useMemo(() => {
+    const set = new Set<string>();
+    flatAuditStories.forEach((r) => { if (r.region) set.add(r.region); });
+    return Array.from(set).sort();
+  }, [flatAuditStories]);
+
+  const availableAuditTags = useMemo(() => {
+    const set = new Set<string>();
+    flatAuditStories.forEach((r) => { if (r.projectTag && r.projectTag !== '—') set.add(r.projectTag); });
+    return Array.from(set).sort();
+  }, [flatAuditStories]);
+
+  // Filtered stories in Audit Trail
+  const filteredAuditStories = useMemo(() => {
+    return flatAuditStories.filter((item) => {
+      // 1. Search Query (matches story ID or title or resource)
+      if (auditSearchQuery.trim()) {
+        const q = auditSearchQuery.trim().toLowerCase();
+        const matchesId = String(item.storyId).includes(q);
+        const matchesTitle = item.title.toLowerCase().includes(q);
+        const matchesResource = item.resource.toLowerCase().includes(q);
+        if (!matchesId && !matchesTitle && !matchesResource) {
+          return false;
+        }
+      }
+      // 2. Sprint Filter
+      if (auditSprintFilter !== 'All' && item.sprint !== auditSprintFilter) {
+        return false;
+      }
+      // 3. Region Filter
+      if (auditRegionFilter !== 'All' && item.region !== auditRegionFilter) {
+        return false;
+      }
+      // 4. Project / Tag Filter
+      if (auditTagFilter !== 'All' && item.projectTag !== auditTagFilter) {
+        return false;
+      }
+      // 5. Execution Result Filter
+      if (auditResultFilter !== 'All' && item.result !== auditResultFilter) {
+        return false;
+      }
+      // 6. Closure Date Filter
+      if (auditDateFilter.trim()) {
+        const dateNeedle = auditDateFilter.trim().toLowerCase();
+        const rawMatches = item.closureDateRaw.toLowerCase().includes(dateNeedle);
+        const timeMatches = item.closureTime.toLowerCase().includes(dateNeedle);
+        if (!rawMatches && !timeMatches) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [
+    flatAuditStories,
+    auditSearchQuery,
+    auditSprintFilter,
+    auditRegionFilter,
+    auditTagFilter,
+    auditResultFilter,
+    auditDateFilter,
+  ]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setAuditCurrentPage(1);
+  }, [
+    auditSearchQuery,
+    auditSprintFilter,
+    auditRegionFilter,
+    auditTagFilter,
+    auditResultFilter,
+    auditDateFilter,
+  ]);
+
+  const totalAuditPages = Math.max(1, Math.ceil(filteredAuditStories.length / auditPageSize));
+  const pagedAuditStories = useMemo(() => {
+    const start = (auditCurrentPage - 1) * auditPageSize;
+    return filteredAuditStories.slice(start, start + auditPageSize);
+  }, [filteredAuditStories, auditCurrentPage, auditPageSize]);
+
+  // Export Audit Trail to Excel (Requirement 5.2)
+  const handleExportAuditTrail = () => {
+    if (filteredAuditStories.length === 0) return;
+    const rows = filteredAuditStories.map((r) => ({
+      'Execution / Batch ID': r.auditId,
+      'Story ID': r.storyId,
+      'Story Title': r.title,
+      'Resource': r.resource,
+      'Region': r.region,
+      'Project / Tag': r.projectTag,
+      'Sprint / Iteration': r.sprint,
+      'Area Path': r.areaPath,
+      'Previous Status': r.previousStatus,
+      'Requested Status': r.requestedStatus,
+      'Resulting Status': r.resultingStatus,
+      'Story Points': r.storyPoints,
+      'Executed By': r.executedBy,
+      'Closure Time': r.closureTime,
+      'Result': r.result,
+      'Error Details': r.errorMessage || 'None',
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Closure Audit Trail');
+    XLSX.writeFile(
+      workbook,
+      `SIT-Nexus-Closure-Audit-Trail-${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
   };
 
   const toggleSelectStory = (id: number) => {
@@ -547,12 +788,12 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
             </div>
           )}
 
-          {/* 2. CLOSURE PREVIEW KPI METRICS (Affected Resources, Affected Stories, Total Points) */}
+          {/* 2. CLOSURE PREVIEW KPI METRICS (Resources, Stories, Total Points) */}
           {previewData && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-white border border-[#E5E7EB] border-t-3 border-t-[#1C1C1C] p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col justify-between">
                 <span className="text-[11px] font-mono uppercase tracking-wider text-[#6B7280] font-semibold">
-                  Affected Resources
+                  Resources
                 </span>
                 <div className="flex items-baseline gap-2 mt-2">
                   <span className="text-3xl font-black text-[#1C1C1C] font-mono">
@@ -564,7 +805,7 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
 
               <div className="bg-white border border-[#E5E7EB] border-t-3 border-t-[#FFCC00] p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col justify-between">
                 <span className="text-[11px] font-mono uppercase tracking-wider text-[#6B7280] font-semibold">
-                  Affected Stories
+                  Stories
                 </span>
                 <div className="flex items-baseline gap-2 mt-2">
                   <span className="text-3xl font-black text-[#1C1C1C] font-mono">
@@ -828,92 +1069,516 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
           )}
         </>
       ) : (
-        /* AUDIT TRAIL HISTORICAL LEDGER (Section 18) */
-        <div className="bg-white border border-[#E5E7EB] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-[#F1F3F5] flex items-center justify-between">
+        /* AUDIT TRAIL HISTORICAL LEDGER (Requirement 5.2) */
+        <div className="flex flex-col gap-4">
+          
+          {/* Header & Action Controls */}
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="font-bold text-sm text-[#1F2937]">Closure Audit Trail</h3>
-              <p className="text-xs text-[#6B7280] mt-0.5">Historical ledger of all sprint closure transitions executed via SIT Nexus.</p>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#1C1C1C]" />
+                <h3 className="font-bold text-sm text-[#1F2937]">Closure Audit Trail</h3>
+                <span className="text-[11px] font-mono font-bold bg-neutral-100 text-neutral-700 px-2.5 py-0.5 rounded-full border border-neutral-200">
+                  {flatAuditStories.length} {flatAuditStories.length === 1 ? 'Record' : 'Records'}
+                </span>
+              </div>
+              <p className="text-xs text-[#6B7280] mt-0.5">
+                Authoritative historical log of all sprint closure executions and Azure DevOps work item updates.
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={fetchAuditHistory}
-              disabled={isLoadingHistory}
-              className="h-8 px-3 border border-[#D1D5DB] rounded-lg text-xs font-semibold text-[#4B5563] hover:bg-[#F9FAFB] flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingHistory ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
-            </button>
+
+            <div className="flex items-center gap-2 self-end sm:self-center">
+              <button
+                type="button"
+                onClick={handleExportAuditTrail}
+                disabled={filteredAuditStories.length === 0}
+                className="h-8 px-3 border border-[#D1D5DB] rounded-lg text-xs font-semibold text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-40 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                title="Export audit records to Excel (.xlsx)"
+              >
+                <Download className="w-3.5 h-3.5 text-[#4B5563]" />
+                <span>Export Audit</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={fetchAuditHistory}
+                disabled={isLoadingHistory}
+                className="h-8 px-3 bg-[#1C1C1C] hover:bg-neutral-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                title="Refresh audit history from database"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingHistory ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB] text-[#6B7280] font-mono uppercase text-[11px] tracking-wider select-none">
-                  <th className="py-2.5 px-3.5 font-bold">Audit ID</th>
-                  <th className="py-2.5 px-3.5 font-bold">Executed By</th>
-                  <th className="py-2.5 px-3.5 font-bold">Date & Time</th>
-                  <th className="py-2.5 px-3.5 font-bold">Sprint / Scope</th>
-                  <th className="py-2.5 px-3.5 font-bold">Region</th>
-                  <th className="py-2.5 px-3.5 font-bold text-right">Successful</th>
-                  <th className="py-2.5 px-3.5 font-bold text-right">Failed</th>
-                  <th className="py-2.5 px-3.5 font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F1F3F5] font-sans">
-                {isLoadingHistory ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-[#6B7280] font-mono">
-                      Loading audit records...
-                    </td>
+          {/* Quick Metrics Bar */}
+          {flatAuditStories.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
+              <div className="bg-white border border-[#E5E7EB] p-3 rounded-xl shadow-2xs flex flex-col">
+                <span className="text-[10px] text-[#6B7280] uppercase font-semibold">Total Records</span>
+                <span className="text-lg font-bold text-[#1C1C1C] mt-0.5">{flatAuditStories.length}</span>
+              </div>
+              <div className="bg-white border border-[#E5E7EB] border-l-4 border-l-emerald-500 p-3 rounded-xl shadow-2xs flex flex-col">
+                <span className="text-[10px] text-[#6B7280] uppercase font-semibold">Successfully Closed</span>
+                <span className="text-lg font-bold text-emerald-700 mt-0.5">
+                  {flatAuditStories.filter((s) => s.result === 'Success').length}
+                </span>
+              </div>
+              <div className="bg-white border border-[#E5E7EB] border-l-4 border-l-red-500 p-3 rounded-xl shadow-2xs flex flex-col">
+                <span className="text-[10px] text-[#6B7280] uppercase font-semibold">Failed Operations</span>
+                <span className="text-lg font-bold text-red-600 mt-0.5">
+                  {flatAuditStories.filter((s) => s.result === 'Failed').length}
+                </span>
+              </div>
+              <div className="bg-white border border-[#E5E7EB] p-3 rounded-xl shadow-2xs flex flex-col">
+                <span className="text-[10px] text-[#6B7280] uppercase font-semibold">Filtered View</span>
+                <span className="text-lg font-bold text-[#374151] mt-0.5">{filteredAuditStories.length}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Search & Filter Toolbar */}
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
+              
+              {/* Search Box: Story ID or Title */}
+              <div className="relative sm:col-span-2">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
+                <input
+                  type="text"
+                  placeholder="Search by Story ID, title, or resource..."
+                  value={auditSearchQuery}
+                  onChange={(e) => setAuditSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-8 py-1.5 text-xs bg-[#F9FAFB] border border-[#D1D5DB] rounded-lg outline-none focus:bg-white focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] transition-all"
+                />
+                {auditSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setAuditSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#4B5563]"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Sprint / Iteration Filter */}
+              <div>
+                <select
+                  value={auditSprintFilter}
+                  onChange={(e) => setAuditSprintFilter(e.target.value)}
+                  aria-label="Filter by Sprint"
+                  className="w-full py-1.5 px-2.5 text-xs bg-[#F9FAFB] border border-[#D1D5DB] rounded-lg outline-none focus:bg-white focus:border-[#FFCD11] transition-all cursor-pointer font-sans"
+                >
+                  <option value="All">All Sprints</option>
+                  {availableAuditSprints.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Region Filter */}
+              <div>
+                <select
+                  value={auditRegionFilter}
+                  onChange={(e) => setAuditRegionFilter(e.target.value)}
+                  aria-label="Filter by Region"
+                  className="w-full py-1.5 px-2.5 text-xs bg-[#F9FAFB] border border-[#D1D5DB] rounded-lg outline-none focus:bg-white focus:border-[#FFCD11] transition-all cursor-pointer font-sans"
+                >
+                  <option value="All">All Regions</option>
+                  {availableAuditRegions.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Project / Tag Filter */}
+              <div>
+                <select
+                  value={auditTagFilter}
+                  onChange={(e) => setAuditTagFilter(e.target.value)}
+                  aria-label="Filter by Project or Tag"
+                  className="w-full py-1.5 px-2.5 text-xs bg-[#F9FAFB] border border-[#D1D5DB] rounded-lg outline-none focus:bg-white focus:border-[#FFCD11] transition-all cursor-pointer font-sans"
+                >
+                  <option value="All">All Projects / Tags</option>
+                  {availableAuditTags.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Execution Result Filter */}
+              <div>
+                <select
+                  value={auditResultFilter}
+                  onChange={(e) => setAuditResultFilter(e.target.value as any)}
+                  aria-label="Filter by Execution Result"
+                  className="w-full py-1.5 px-2.5 text-xs bg-[#F9FAFB] border border-[#D1D5DB] rounded-lg outline-none focus:bg-white focus:border-[#FFCD11] transition-all cursor-pointer font-sans font-medium"
+                >
+                  <option value="All">All Results</option>
+                  <option value="Success">Success Only</option>
+                  <option value="Failed">Failed Only</option>
+                  <option value="Skipped">Skipped Only</option>
+                </select>
+              </div>
+
+            </div>
+
+            {/* Active Filters Reset Row */}
+            {(auditSearchQuery || auditSprintFilter !== 'All' || auditRegionFilter !== 'All' || auditTagFilter !== 'All' || auditResultFilter !== 'All' || auditDateFilter) && (
+              <div className="flex items-center justify-between pt-1 border-t border-[#F1F3F5] text-xs">
+                <span className="text-[#6B7280]">
+                  Filtered to <strong>{filteredAuditStories.length}</strong> of {flatAuditStories.length} total records
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuditSearchQuery('');
+                    setAuditSprintFilter('All');
+                    setAuditRegionFilter('All');
+                    setAuditTagFilter('All');
+                    setAuditResultFilter('All');
+                    setAuditDateFilter('');
+                  }}
+                  className="text-xs text-[#B45309] hover:underline font-semibold cursor-pointer"
+                >
+                  Clear all filters
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Error Banner */}
+          {historyError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>Failed to load audit history: {historyError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={fetchAuditHistory}
+                className="underline font-bold text-red-800 ml-3 cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Audit Records Table */}
+          <div className="bg-white border border-[#E5E7EB] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB] text-[#6B7280] font-mono uppercase text-[11px] tracking-wider select-none">
+                    <th className="py-2.5 px-3.5 font-bold">Story ID</th>
+                    <th className="py-2.5 px-3.5 font-bold">Title</th>
+                    <th className="py-2.5 px-3.5 font-bold">Resource</th>
+                    <th className="py-2.5 px-3.5 font-bold">Project / Tag</th>
+                    <th className="py-2.5 px-3.5 font-bold">Previous Status</th>
+                    <th className="py-2.5 px-3.5 font-bold">Resulting Status</th>
+                    <th className="py-2.5 px-3.5 font-bold">Closure Time</th>
+                    <th className="py-2.5 px-3.5 font-bold">Result</th>
+                    <th className="py-2.5 px-3.5 font-bold text-center">Action</th>
                   </tr>
-                ) : auditHistory.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-[#6B7280] font-mono">
-                      No closure operations recorded yet.
-                    </td>
-                  </tr>
-                ) : (
-                  auditHistory.map((rec) => (
-                    <tr key={rec.id} className="hover:bg-[#F9FAFB] transition-colors">
-                      <td className="py-2.5 px-3.5 font-mono text-[11px] font-bold text-[#1C1C1C]">
-                        {rec.id}
-                      </td>
-                      <td className="py-2.5 px-3.5 font-semibold text-[#1F2937]">
-                        {rec.managerName}
-                      </td>
-                      <td className="py-2.5 px-3.5 text-[#6B7280] font-mono text-[11px]">
-                        {rec.date} {rec.time}
-                      </td>
-                      <td className="py-2.5 px-3.5 font-mono text-[11px] text-[#374151]">
-                        {rec.sprint}
-                      </td>
-                      <td className="py-2.5 px-3.5 font-mono text-[11px] text-[#374151]">
-                        {rec.region}
-                      </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-emerald-700">
-                        {rec.successfulUpdates}
-                      </td>
-                      <td className="py-2.5 px-3.5 text-right font-mono font-bold text-red-600">
-                        {rec.failedUpdates}
-                      </td>
-                      <td className="py-2.5 px-3.5">
-                        <span className={`inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 rounded-full font-mono ${
-                          rec.status === 'SUCCESS'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : rec.status === 'PARTIAL_SUCCESS'
-                            ? 'bg-amber-50 text-amber-800 border border-amber-300'
-                            : 'bg-red-50 text-red-700 border border-red-200'
-                        }`}>
-                          {rec.status || 'SUCCESS'}
-                        </span>
+                </thead>
+                <tbody className="divide-y divide-[#F1F3F5] font-sans">
+                  {isLoadingHistory ? (
+                    <tr>
+                      <td colSpan={9} className="py-16 text-center text-[#6B7280]">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <RefreshCw className="w-5 h-5 animate-spin text-[#FFCD11]" />
+                          <span className="font-mono text-xs">Loading authoritative audit trail records...</span>
+                        </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : flatAuditStories.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-16 text-center text-[#6B7280]">
+                        <div className="flex flex-col items-center justify-center max-w-md mx-auto">
+                          <ShieldCheck className="w-8 h-8 text-[#9CA3AF] mb-2" />
+                          <h4 className="font-bold text-sm text-[#1F2937]">No closure operations recorded yet</h4>
+                          <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
+                            When User Stories are transitioned from Internal Review to Closed during Sprint Closure, their complete audit details will be persistently stored here.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredAuditStories.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-16 text-center text-[#6B7280]">
+                        <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                          <Search className="w-8 h-8 text-[#9CA3AF] mb-2" />
+                          <h4 className="font-bold text-sm text-[#1F2937]">No matching audit records found</h4>
+                          <p className="text-xs text-[#6B7280] mt-1">
+                            Try adjusting your search query or filter options to inspect other closure records.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuditSearchQuery('');
+                              setAuditSprintFilter('All');
+                              setAuditRegionFilter('All');
+                              setAuditTagFilter('All');
+                              setAuditResultFilter('All');
+                              setAuditDateFilter('');
+                            }}
+                            className="mt-3 px-3 py-1.5 bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            Reset Filters
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedAuditStories.map((row) => (
+                      <tr 
+                        key={row.uniqueKey} 
+                        className="hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+                        onClick={() => setSelectedAuditRecord(row)}
+                      >
+                        <td className="py-2.5 px-3.5 font-mono text-[11px] font-bold text-[#1C1C1C] whitespace-nowrap">
+                          #{row.storyId}
+                        </td>
+                        <td className="py-2.5 px-3.5 font-medium text-[#1F2937] max-w-xs truncate" title={row.title}>
+                          {row.title}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-[#374151] whitespace-nowrap">
+                          <div className="font-medium">{row.resource}</div>
+                          <span className="text-[10px] text-[#9CA3AF] font-mono">{row.region}</span>
+                        </td>
+                        <td className="py-2.5 px-3.5 font-mono text-[11px] text-[#4B5563] whitespace-nowrap">
+                          {row.projectTag}
+                        </td>
+                        <td className="py-2.5 px-3.5 whitespace-nowrap">
+                          <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300">
+                            {row.previousStatus}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5 whitespace-nowrap">
+                          <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                            row.resultingStatus === 'Closed'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                              : 'bg-neutral-100 text-neutral-700 border-neutral-300'
+                          }`}>
+                            {row.resultingStatus}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-[#6B7280] font-mono text-[11px] whitespace-nowrap">
+                          {row.closureTime}
+                        </td>
+                        <td className="py-2.5 px-3.5 whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full font-mono ${
+                            row.result === 'Success'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : row.result === 'Skipped'
+                              ? 'bg-gray-100 text-gray-700 border border-gray-200'
+                              : 'bg-red-50 text-red-700 border border-red-200'
+                          }`}>
+                            {row.result === 'Success' ? (
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            ) : row.result === 'Skipped' ? (
+                              <Info className="w-3 h-3 text-gray-500" />
+                            ) : (
+                              <AlertTriangle className="w-3 h-3 text-red-600" />
+                            )}
+                            <span>{row.result}</span>
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAuditRecord(row)}
+                            className="p-1 text-[#6B7280] hover:text-[#111827] hover:bg-[#E5E7EB] rounded-md transition-colors cursor-pointer"
+                            title="Inspect full audit record details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {filteredAuditStories.length > auditPageSize && (
+              <div className="p-3 border-t border-[#F1F3F5] bg-[#FAFAFA] flex items-center justify-between text-xs text-[#6B7280]">
+                <span>
+                  Showing <strong>{((auditCurrentPage - 1) * auditPageSize) + 1}</strong> - <strong>{Math.min(auditCurrentPage * auditPageSize, filteredAuditStories.length)}</strong> of <strong>{filteredAuditStories.length}</strong> records
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAuditCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={auditCurrentPage === 1}
+                    className="p-1 rounded-md border border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6] disabled:opacity-40 cursor-pointer"
+                    title="Previous page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="px-2 font-mono font-medium text-[#374151]">
+                    Page {auditCurrentPage} of {totalAuditPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAuditCurrentPage((p) => Math.min(totalAuditPages, p + 1))}
+                    disabled={auditCurrentPage === totalAuditPages}
+                    className="p-1 rounded-md border border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6] disabled:opacity-40 cursor-pointer"
+                    title="Next page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Record Inspection Detail Modal (Requirement 5.2) */}
+          {selectedAuditRecord && (
+            <div 
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+              onClick={() => setSelectedAuditRecord(null)}
+            >
+              <div 
+                className="bg-white border border-[#E5E7EB] rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col text-xs font-sans animate-in fade-in"
+                onClick={(e) => e.stopPropagation()}
+              >
+                
+                {/* Modal Header */}
+                <div className="bg-[#1C1C1C] text-white p-4 flex items-center justify-between border-b-2 border-[#FFCC00]">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-[#FFCC00]" />
+                    <h3 className="text-sm font-bold uppercase tracking-tight text-white">
+                      Closure Audit Record Detail
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAuditRecord(null)}
+                    className="text-neutral-400 hover:text-white p-1 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-5 flex flex-col gap-4 text-[#374151] max-h-[75vh] overflow-y-auto">
+                  
+                  {/* Top Item Summary */}
+                  <div className="flex items-start justify-between pb-3 border-b border-[#F1F3F5] gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 font-mono text-xs">
+                        <span className="font-bold text-[#1C1C1C] text-sm">#{selectedAuditRecord.storyId}</span>
+                        <span>·</span>
+                        <span className="text-[#6B7280]">{selectedAuditRecord.projectTag}</span>
+                      </div>
+                      <h4 className="font-bold text-sm text-[#111827] mt-1">
+                        {selectedAuditRecord.title}
+                      </h4>
+                    </div>
+
+                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full font-mono shrink-0 ${
+                      selectedAuditRecord.result === 'Success'
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+                        : selectedAuditRecord.result === 'Skipped'
+                        ? 'bg-gray-100 text-gray-800 border border-gray-300'
+                        : 'bg-red-50 text-red-800 border border-red-300'
+                    }`}>
+                      {selectedAuditRecord.result === 'Success' ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                      )}
+                      <span>{selectedAuditRecord.result}</span>
+                    </span>
+                  </div>
+
+                  {/* Failure Details (if Failed) */}
+                  {selectedAuditRecord.result === 'Failed' && selectedAuditRecord.errorMessage && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-xs">
+                      <span className="font-bold block mb-1 flex items-center gap-1.5 text-red-900">
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                        <span>Execution Error Details:</span>
+                      </span>
+                      <p className="font-mono text-[11px] leading-relaxed">
+                        {selectedAuditRecord.errorMessage}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Key Metadata Grid */}
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB]">
+                      <span className="text-[10px] text-[#6B7280] uppercase font-mono block">Assigned Resource</span>
+                      <span className="font-bold text-[#1F2937]">{selectedAuditRecord.resource}</span>
+                      <span className="text-[11px] text-[#6B7280] block font-mono">Region: {selectedAuditRecord.region}</span>
+                    </div>
+
+                    <div className="bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB]">
+                      <span className="text-[10px] text-[#6B7280] uppercase font-mono block">Story Points</span>
+                      <span className="font-bold text-lg font-mono text-[#1F2937]">{selectedAuditRecord.storyPoints}</span>
+                      <span className="text-[10px] text-[#6B7280] block uppercase font-mono">pts</span>
+                    </div>
+
+                    <div className="bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB]">
+                      <span className="text-[10px] text-[#6B7280] uppercase font-mono block">Previous Status</span>
+                      <span className="font-bold text-amber-800">{selectedAuditRecord.previousStatus}</span>
+                    </div>
+
+                    <div className="bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB]">
+                      <span className="text-[10px] text-[#6B7280] uppercase font-mono block">Resulting Status</span>
+                      <span className={`font-bold ${selectedAuditRecord.resultingStatus === 'Closed' ? 'text-emerald-700' : 'text-[#374151]'}`}>
+                        {selectedAuditRecord.resultingStatus}
+                      </span>
+                    </div>
+
+                    <div className="col-span-2 bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB] font-mono text-[11px]">
+                      <span className="text-[10px] text-[#6B7280] uppercase block">Sprint / Iteration Path</span>
+                      <span className="font-semibold text-[#1F2937] break-all">{selectedAuditRecord.sprint}</span>
+                    </div>
+
+                    <div className="col-span-2 bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB] font-mono text-[11px]">
+                      <span className="text-[10px] text-[#6B7280] uppercase block">Area Path</span>
+                      <span className="font-semibold text-[#1F2937] break-all">{selectedAuditRecord.areaPath}</span>
+                    </div>
+
+                    <div className="bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB]">
+                      <span className="text-[10px] text-[#6B7280] uppercase font-mono block">Execution Timestamp</span>
+                      <span className="font-mono text-[11px] text-[#1F2937] font-semibold">{selectedAuditRecord.closureTime}</span>
+                    </div>
+
+                    <div className="bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB]">
+                      <span className="text-[10px] text-[#6B7280] uppercase font-mono block">Executed By</span>
+                      <span className="font-medium text-[#1F2937]">{selectedAuditRecord.executedBy}</span>
+                    </div>
+
+                    <div className="col-span-2 bg-[#F9FAFB] p-2.5 rounded-lg border border-[#E5E7EB] font-mono text-[11px]">
+                      <span className="text-[10px] text-[#6B7280] uppercase block">Batch / Execution ID</span>
+                      <span className="font-bold text-[#1C1C1C] break-all">{selectedAuditRecord.auditId}</span>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-3.5 bg-[#F9FAFB] border-t border-[#E5E7EB] flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAuditRecord(null)}
+                    className="px-4 py-1.5 bg-[#1C1C1C] hover:bg-neutral-800 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 

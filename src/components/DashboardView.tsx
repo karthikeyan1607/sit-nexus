@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
   RefreshCw, 
@@ -87,6 +87,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [collapsedResources, setCollapsedResources] = useState<Record<string, boolean>>({});
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [copiedWiql, setCopiedWiql] = useState(false);
+  const [isNoticeDismissed, setIsNoticeDismissed] = useState(false);
+
+  // Reset notice dismissal whenever a new query is executed or warnings change
+  useEffect(() => {
+    if (isQuerying) {
+      setIsNoticeDismissed(false);
+    }
+  }, [isQuerying]);
+
+  useEffect(() => {
+    setIsNoticeDismissed(false);
+  }, [warnings]);
 
   // Toggle collapse state for a resource card
   const toggleCollapse = (name: string) => {
@@ -274,17 +286,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Identity Warnings Banner (Section 13 & 31) */}
-        {warnings && warnings.length > 0 && (
-          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-[10px] flex items-start gap-2.5 text-xs text-amber-900 animate-in fade-in">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold block">Identity Mapping Notice:</span>
-              <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[11px] text-amber-800">
-                {warnings.map((w, idx) => (
-                  <li key={idx}>{w}</li>
-                ))}
-              </ul>
+        {!isNoticeDismissed && warnings && warnings.length > 0 && (
+          <div 
+            className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-[10px] flex items-start justify-between gap-2.5 text-xs text-amber-900 animate-in fade-in"
+            role="alert"
+          >
+            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="min-w-0 pr-2">
+                <span className="font-bold block">Identity Mapping Notice:</span>
+                <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[11px] text-amber-800">
+                  {warnings.map((w, idx) => (
+                    <li key={idx} className="break-words">{w}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsNoticeDismissed(true)}
+              className="text-amber-700 hover:text-amber-950 hover:bg-amber-100/80 active:bg-amber-200 p-1 rounded-md transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+              aria-label="Dismiss identity mapping notice"
+              title="Dismiss identity mapping notice"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 

@@ -107,8 +107,17 @@ export interface StoredClosureAuditDetail {
   story_id: number;
   story_title?: string;
   resource_name: string;
+  region?: string;
+  project?: string;
+  tag?: string;
+  iteration_path?: string;
+  area_path?: string;
   previous_state: string;
+  requested_state?: string;
+  actual_state?: string;
   new_state: string;
+  story_points?: number;
+  executing_user?: string;
   status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
   error_message?: string;
   processed_at: string;
@@ -185,46 +194,7 @@ const DEFAULT_MANAGERS: ManagerProfile[] = [
   },
 ];
 
-const DEFAULT_AUDIT_LOG: StoredClosureAudit[] = [
-  {
-    id: 'audit-sprint-18-in',
-    manager_id: 'mgr-1',
-    managerName: 'Karthikeyan',
-    date: '15-Sep-2026',
-    time: '17:30 EST',
-    sprint: 'Sprint 18',
-    region: 'India',
-    area_path: 'CAT Digital',
-    action: 'Internal Review → Closed',
-    actionType: 'Internal Review → Closed',
-    requested_count: 42,
-    successful_count: 42,
-    failed_count: 0,
-    totalStories: 42,
-    totalPoints: 128,
-    successfulUpdates: 42,
-    failedUpdates: 0,
-    skippedUpdates: 0,
-    started_at: '2026-09-15T17:28:00Z',
-    completed_at: '2026-09-15T17:30:00Z',
-    executedAt: '2026-09-15T17:30:00Z',
-    status: 'SUCCESS',
-    updatedItemIds: [10320, 10325],
-    details: [
-      {
-        id: 'det-1',
-        audit_id: 'audit-sprint-18-in',
-        story_id: 10320,
-        story_title: 'CAT Mobile Validation',
-        resource_name: 'Karthikeyan',
-        previous_state: 'Internal Review',
-        new_state: 'Closed',
-        status: 'SUCCESS',
-        processed_at: '2026-09-15T17:29:10Z',
-      },
-    ],
-  },
-];
+const DEFAULT_AUDIT_LOG: StoredClosureAudit[] = [];
 
 class DatabaseService {
   private data: DatabaseSchema;
@@ -289,7 +259,16 @@ class DatabaseService {
             }
           }
           if (!parsed.closureAuditLog) {
-            parsed.closureAuditLog = DEFAULT_AUDIT_LOG;
+            parsed.closureAuditLog = [];
+          } else {
+            // Remove any fabricated historical mock records
+            const prevLen = parsed.closureAuditLog.length;
+            parsed.closureAuditLog = parsed.closureAuditLog.filter(
+              (rec: any) => rec.id !== 'audit-sprint-18-in'
+            );
+            if (parsed.closureAuditLog.length !== prevLen) {
+              this.saveToDisk(parsed);
+            }
           }
           if (!parsed.dataSource) {
             parsed.dataSource = (process.env.DATA_SOURCE as 'mock' | 'azure') || 'azure';
