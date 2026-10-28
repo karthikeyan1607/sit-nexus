@@ -30,9 +30,10 @@ import {
   FilterState, 
   StoryStatus 
 } from '../types';
-import { AVAILABLE_SPRINTS } from '../data/mockAdoData';
 import { normalize } from '../utils/normalize';
 import { RegionFlag } from './RegionFlag';
+import { AreaPathSelect } from './common/AreaPathSelect';
+import { IterationPathSelect } from './common/IterationPathSelect';
 
 interface DashboardViewProps {
   filter: FilterState;
@@ -43,6 +44,8 @@ interface DashboardViewProps {
   totalMasterCount: number;
   availableProjects: string[];
   availableAreaPaths?: string[];
+  availableIterationPaths?: string[];
+
   warnings?: string[];
   resources: ResourceGroup[];
   stories: WorkItemStory[];
@@ -70,6 +73,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   totalMasterCount,
   availableProjects,
   availableAreaPaths = ['CAT Digital', 'SIT', 'SIT\\India', 'SIT\\Europe', 'SIT\\USA'],
+  availableIterationPaths = [],
   warnings = [],
   resources,
   stories,
@@ -213,37 +217,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Step 2, 3 & 4: Iteration Path, Area Path & Project Selectors + RUN QUERY Button */}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-3 border-t border-[#F1F3F5] items-end">
           
-          {/* AREA PATH Manual Text Input (Section 3) */}
-          <div className="sm:col-span-4 flex flex-col gap-1">
-            <label className="text-[11px] font-mono uppercase tracking-wider text-[#6B7280] font-semibold flex items-center gap-1">
-              <Layers className="w-3 h-3 text-[#1C1C1C]" />
-              <span>AREA PATH</span>
-            </label>
-            <input
-              type="text"
+          {/* AREA PATH Dropdown Selector */}
+          <div className="sm:col-span-4">
+            <AreaPathSelect
               value={filter.areaPath || ''}
-              onChange={(e) => onChangeFilter({ areaPath: e.target.value })}
-              placeholder="Enter Azure DevOps Area Path"
-              className="w-full h-9 bg-white border border-[#D1D5DB] focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-mono font-medium text-[#1F2937] placeholder:text-[#9CA3AF] rounded-lg px-3 py-1.5 outline-none transition-all"
+              onChange={(areaPath) => onChangeFilter({ areaPath })}
+              showLabel={true}
+              id="dashboard-area-path-select"
             />
           </div>
 
-          {/* ITERATION PATH Manual Text Input (Sections 4 & 5) */}
-          <div className="sm:col-span-3 flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-mono uppercase tracking-wider text-[#6B7280] font-semibold flex items-center gap-1">
-                <CalendarDays className="w-3 h-3 text-[#1C1C1C]" />
-                <span>ITERATION PATH</span>
-              </label>
-            </div>
-            <input
-              type="text"
+          {/* ITERATION PATH Dropdown Selector */}
+          <div className="sm:col-span-3">
+            <IterationPathSelect
               value={filter.iterationPath || ''}
-              onChange={(e) => onChangeFilter({ iterationPath: e.target.value, sprint: e.target.value })}
-              placeholder="Enter Azure DevOps Iteration Path"
-              className="w-full h-9 bg-white border border-[#D1D5DB] focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-mono font-medium text-[#1F2937] placeholder:text-[#9CA3AF] rounded-lg px-3 py-1.5 outline-none transition-all"
+              onChange={(iterationPath) => onChangeFilter({ iterationPath, sprint: iterationPath })}
+              showLabel={true}
+              id="dashboard-iteration-path-select"
+              additionalOptions={availableIterationPaths}
             />
           </div>
+
 
           {/* Project Dropdown (Azure DevOps Tag) */}
           <div className="sm:col-span-3 flex flex-col gap-1">

@@ -427,10 +427,17 @@ export async function switchDataSourceModeApi(mode: 'mock' | 'azure'): Promise<{
   return handleResponse(res);
 }
 
-export async function getSprintsApi(): Promise<{ success: boolean; sprints: { id: string; name: string; path: string }[] }> {
-  const res = await fetch(`${API_BASE}/sprints`);
+export async function getSprintsApi(): Promise<{
+  success: boolean;
+  source?: string;
+  sprints: { id: string; name: string; path: string; startDate?: string; endDate?: string }[];
+}> {
+  const res = await fetch(`${API_BASE}/sprints`, {
+    headers: getAuthHeaders(),
+  });
   return handleResponse(res);
 }
+
 
 export async function getAreaPathsApi(): Promise<{ success: boolean; areaPaths: string[] }> {
   const res = await fetch(`${API_BASE}/area-paths`);

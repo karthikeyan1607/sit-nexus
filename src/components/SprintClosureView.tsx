@@ -40,6 +40,8 @@ import {
 } from '../utils/api';
 import { AVAILABLE_SPRINTS } from '../data/mockAdoData';
 import { normalize } from '../utils/normalize';
+import { AreaPathSelect } from './common/AreaPathSelect';
+import { IterationPathSelect } from './common/IterationPathSelect';
 
 export interface AuditStoryRow {
   uniqueKey: string;
@@ -517,32 +519,22 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
               
               {/* Sprint / Iteration Path Selector */}
               <div>
-                <label className="text-[11px] font-mono uppercase text-[#6B7280] font-semibold block mb-1">
-                  Sprint / Iteration Path
-                </label>
-                <input
-                  type="text"
-                  list="closure-sprint-list"
+                <IterationPathSelect
                   value={selectedSprint}
-                  onChange={(e) => setSelectedSprint(e.target.value)}
-                  placeholder="Enter exact Iteration Path"
-                  className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded-lg text-xs text-[#1F2937] font-mono focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none transition-all"
+                  onChange={(val) => setSelectedSprint(val)}
+                  label="Sprint / Iteration Path"
+                  showLabel={true}
+                  id="closure-sprint-select"
                 />
-                <datalist id="closure-sprint-list">
-                  <option value="Cat Digital\2026\Sprint 20 (Sep 30 - Oct 13)" />
-                  <option value="Cat Digital\2026\Sprint 19 (Sep 16 - Sep 29)" />
-                  {AVAILABLE_SPRINTS.map((s) => (
-                    <option key={s} value={s} />
-                  ))}
-                </datalist>
               </div>
 
               {/* Region Selector */}
               <div>
-                <label className="text-[11px] font-mono uppercase text-[#6B7280] font-semibold block mb-1">
+                <label htmlFor="closure-region-select" className="text-[11px] font-mono uppercase text-[#6B7280] font-semibold block mb-1">
                   Region
                 </label>
                 <select
+                  id="closure-region-select"
                   value={selectedRegion}
                   onChange={(e) => setSelectedRegion(e.target.value)}
                   className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded-lg text-xs text-[#1F2937] font-semibold focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none cursor-pointer transition-all"
@@ -554,25 +546,15 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
                 </select>
               </div>
 
-              {/* Area Path Input */}
+              {/* Area Path Selector */}
               <div>
-                <label className="text-[11px] font-mono uppercase text-[#6B7280] font-semibold block mb-1">
-                  Area Path
-                </label>
-                <input
-                  type="text"
-                  list="closure-area-list"
+                <AreaPathSelect
                   value={selectedAreaPath}
-                  onChange={(e) => setSelectedAreaPath(e.target.value)}
-                  placeholder="Enter Area Path"
-                  className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded-lg text-xs text-[#1F2937] font-mono focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none transition-all"
+                  onChange={(val) => setSelectedAreaPath(val)}
+                  label="Area Path"
+                  showLabel={true}
+                  id="closure-area-select"
                 />
-                <datalist id="closure-area-list">
-                  <option value="Cat Digital\Platform\System-Integration Testing\P - SIT Energizers" />
-                  <option value="CAT Digital" />
-                  <option value="SIT" />
-                  <option value="SIT\India" />
-                </datalist>
               </div>
 
             </div>

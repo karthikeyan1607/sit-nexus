@@ -381,6 +381,84 @@ async function runTestSuite() {
   assert(mockLocalStorage.getItem('sit_nexus_ado_pat') === null, 'STORAGE 8a: PAT removed');
   assert(Boolean(getStoredResourceMaster()), 'STORAGE 8b: Disconnecting Azure DevOps does NOT remove stored Resource Master');
 
+  // ====================================================
+  // SPRINT ITERATION DATES & SEQUENCE (2026 Validation)
+  // ====================================================
+  const { 
+    CENTRALIZED_ITERATION_PATHS, 
+    normalizeIterationPath, 
+    isUnwantedIterationPath, 
+    DEFAULT_ITERATION_PATH 
+  } = await import('../src/constants/paths');
+
+  // Verify Sprint 21 has correct Oct 14 date, not Sep 14
+  const sprint21 = CENTRALIZED_ITERATION_PATHS.find(s => s.value.includes('Sprint 21'));
+  assert(
+    Boolean(sprint21 && sprint21.value.includes('Oct 14') && !sprint21.value.includes('Sep 14')),
+    'SPRINT 1: Sprint 21 has corrected date range Oct 14 - Oct 27 (no Sep 14)'
+  );
+
+  // Verify Sprints 20 through 26 have correct dates and NO placeholder text
+  const expectedSprints = [
+    { num: 20, dates: 'Sep 30 - Oct 13' },
+    { num: 21, dates: 'Oct 14 - Oct 27' },
+    { num: 22, dates: 'Oct 28 - Nov 10' },
+    { num: 23, dates: 'Nov 11 - Nov 24' },
+    { num: 24, dates: 'Nov 25 - Dec 8' },
+    { num: 25, dates: 'Dec 9 - Dec 22' },
+    { num: 26, dates: 'Dec 23 - Jan 5' },
+  ];
+
+  for (const exp of expectedSprints) {
+    const item = CENTRALIZED_ITERATION_PATHS.find(s => s.value.includes(`Sprint ${exp.num}`));
+    assert(
+      Boolean(item && item.value.includes(exp.dates)),
+      `SPRINT 2: Sprint ${exp.num} has accurate two-week dates (${exp.dates})`
+    );
+  }
+
+  // Verify complete removal of unwanted options (Sprint 19, Sprint 18, Cat Digital\2024)
+  const hasSprint19 = CENTRALIZED_ITERATION_PATHS.some(s => s.value.includes('Sprint 19') || s.label.includes('Sprint 19'));
+  const hasSprint18 = CENTRALIZED_ITERATION_PATHS.some(s => s.value.includes('Sprint 18') || s.label.includes('Sprint 18'));
+  const has2024 = CENTRALIZED_ITERATION_PATHS.some(s => s.value.includes('2024') || s.label.includes('2024'));
+
+  assert(!hasSprint19, 'SPRINT 3a: Sprint 19 removed from CENTRALIZED_ITERATION_PATHS');
+  assert(!hasSprint18, 'SPRINT 3b: Sprint 18 removed from CENTRALIZED_ITERATION_PATHS');
+  assert(!has2024, 'SPRINT 3c: Cat Digital\\2024 not in CENTRALIZED_ITERATION_PATHS');
+  assert(CENTRALIZED_ITERATION_PATHS.length === 7, 'SPRINT 3d: CENTRALIZED_ITERATION_PATHS contains exactly 7 options (Sprints 20-26)');
+
+  // Verify isUnwantedIterationPath detects unwanted options
+  assert(isUnwantedIterationPath('Cat Digital\\2026\\Sprint 19 (Sep 16 - Sep 29)'), 'SPRINT 4a: isUnwantedIterationPath flags Sprint 19');
+  assert(isUnwantedIterationPath('Cat Digital\\2026\\Sprint 18'), 'SPRINT 4b: isUnwantedIterationPath flags Sprint 18');
+  assert(isUnwantedIterationPath('Cat Digital\\2024'), 'SPRINT 4c: isUnwantedIterationPath flags Cat Digital\\2024');
+  assert(!isUnwantedIterationPath('Cat Digital\\2026\\Sprint 20 (Sep 30 - Oct 13)'), 'SPRINT 4d: isUnwantedIterationPath allows Sprint 20');
+
+  // Verify normalizeIterationPath converts legacy/placeholder/unwanted paths to predictable default
+  const migrated19 = normalizeIterationPath('Cat Digital\\2026\\Sprint 19 (Sep 16 - Sep 29)');
+  assert(migrated19 === DEFAULT_ITERATION_PATH, 'SPRINT 5a: normalizeIterationPath migrates Sprint 19 to DEFAULT_ITERATION_PATH');
+
+  const migrated18 = normalizeIterationPath('Cat Digital\\2026\\Sprint 18');
+  assert(migrated18 === DEFAULT_ITERATION_PATH, 'SPRINT 5b: normalizeIterationPath migrates Sprint 18 to DEFAULT_ITERATION_PATH');
+
+  const migrated2024 = normalizeIterationPath('Cat Digital\\2024');
+  assert(migrated2024 === DEFAULT_ITERATION_PATH, 'SPRINT 5c: normalizeIterationPath migrates 2024 to DEFAULT_ITERATION_PATH');
+
+  const migrated21 = normalizeIterationPath('Cat Digital\\2026\\Sprint 21 (Sep 14 - Oct 27)');
+  assert(migrated21 === 'Cat Digital\\2026\\Sprint 21 (Oct 14 - Oct 27)', 'SPRINT 5d: normalizeIterationPath migrates Sep 14 typo in Sprint 21');
+
+  // Verify backend DB returns only Sprints 20 through 26
+  const dbSprints = db.getAvailableSprints();
+  assert(
+    dbSprints.every(s => !s.name.includes('Sprint 19') && !s.name.includes('Sprint 18') && !s.path.includes('2024')),
+    'SPRINT 6a: db.getAvailableSprints() excludes Sprint 18, 19, and 2024'
+  );
+  assert(
+    dbSprints.length === 7 && dbSprints.some(s => s.name.includes('Sprint 26 (Dec 23 - Jan 5)')),
+    'SPRINT 6b: db.getAvailableSprints() includes Sprint 20 through Sprint 26'
+  );
+
+
+
   console.log('\n====================================================');
   console.log(`Test Results: ${passed} passed, ${failed} failed`);
   console.log('====================================================');

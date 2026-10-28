@@ -4,7 +4,8 @@ import {
   Users, 
   FolderKanban, 
   CheckCircle2, 
-  Settings 
+  Settings,
+  X
 } from 'lucide-react';
 import { MainNavTab } from './Header';
 import { ManagerProfileDTO } from '../utils/api';
@@ -16,6 +17,9 @@ interface SidebarProps {
   activeManager: ManagerProfileDTO;
   resourceCount: number;
   onTriggerEasterEgg?: () => void;
+  isCollapsed?: boolean;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -24,6 +28,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeManager,
   resourceCount,
   onTriggerEasterEgg,
+  isCollapsed = false,
+  isMobileOpen = false,
+  onCloseMobile,
 }) => {
   const [clickCount, setClickCount] = useState(0);
 
@@ -68,18 +75,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
-  return (
-    <aside className="w-56 sm:w-60 bg-white text-[#1F2937] flex flex-col justify-between shrink-0 h-screen sticky top-0 z-40 select-none border-r border-[#E5E7EB] shadow-[1px_0_3px_rgba(0,0,0,0.02)]">
-      
+  const handleSelectTab = (tabId: MainNavTab) => {
+    setActiveTab(tabId);
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  };
+
+  // Reusable navigation body component
+  const renderSidebarContent = (isDrawer = false) => (
+    <>
       {/* Top Brand Block: Official Caterpillar + SIT Nexus Brand Lockup */}
       <div>
-        <div className="p-3.5 border-b border-[#E5E7EB] bg-[#FAFAFA]">
+        <div className="p-3.5 border-b border-[#E5E7EB] bg-[#FAFAFA] flex items-center justify-between">
           <SitNexusBrandLockup
             layout="stacked"
             size="sm"
             showSubtitle={true}
             onClick={handleEasterEggInteraction}
           />
+          {isDrawer && onCloseMobile && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="p-1 rounded-lg text-[#6B7280] hover:text-[#111827] hover:bg-[#E5E7EB] transition-colors cursor-pointer"
+              aria-label="Close mobile navigation"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Navigation Items (Light mode with Yellow accent for selected item) */}
@@ -92,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => handleSelectTab(item.id)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-150 ease-out text-left cursor-pointer ${
                   isActive
                     ? 'bg-[#FEF9C3] text-[#111827] border-l-4 border-[#FFCD11] shadow-2xs font-bold'
@@ -148,8 +172,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span className="text-[#6B7280] font-semibold">v2.5.0</span>
         </div>
       </div>
+    </>
+  );
 
-    </aside>
+  return (
+    <>
+      {/* 1. Mobile Backdrop & Drawer */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+            onClick={onCloseMobile}
+            aria-hidden="true"
+          />
+          {/* Sliding Drawer */}
+          <aside className="fixed inset-y-0 left-0 w-64 bg-white text-[#1F2937] flex flex-col justify-between h-full select-none border-r border-[#E5E7EB] shadow-2xl z-50 animate-in slide-in-from-left duration-200">
+            {renderSidebarContent(true)}
+          </aside>
+        </div>
+      )}
+
+      {/* 2. Desktop Collapsible Sidebar */}
+      {!isCollapsed && (
+        <aside className="hidden lg:flex w-56 sm:w-60 bg-white text-[#1F2937] flex-col justify-between shrink-0 h-screen sticky top-0 z-40 select-none border-r border-[#E5E7EB] shadow-[1px_0_3px_rgba(0,0,0,0.02)] transition-all duration-200 ease-in-out">
+          {renderSidebarContent(false)}
+        </aside>
+      )}
+    </>
   );
 };
-

@@ -476,25 +476,25 @@ class DatabaseService {
   }
 
   // Sprints (Section 23: GET /api/sprints)
-  public getAvailableSprints(): { id: string; name: string; path: string }[] {
-    const area = this.getActiveManager().areaPath || 'CAT Digital';
+  public getAvailableSprints(): { id: string; name: string; path: string; startDate?: string; endDate?: string }[] {
     return [
-      { id: 'sprint-18', name: 'Sprint 18', path: `${area}\\Sprint 18` },
-      { id: 'sprint-19', name: 'Sprint 19', path: `${area}\\Sprint 19` },
-      { id: 'sprint-20', name: 'Sprint 20', path: `${area}\\Sprint 20` },
-      { id: 'sprint-21', name: 'Sprint 21', path: `${area}\\Sprint 21` },
-      { id: 'sprint-22', name: 'Sprint 22', path: `${area}\\Sprint 22` },
+      { id: 'sprint-20', name: 'Sprint 20 (Sep 30 - Oct 13)', path: 'Cat Digital\\2026\\Sprint 20 (Sep 30 - Oct 13)', startDate: '2026-09-30', endDate: '2026-10-13' },
+      { id: 'sprint-21', name: 'Sprint 21 (Oct 14 - Oct 27)', path: 'Cat Digital\\2026\\Sprint 21 (Oct 14 - Oct 27)', startDate: '2026-10-14', endDate: '2026-10-27' },
+      { id: 'sprint-22', name: 'Sprint 22 (Oct 28 - Nov 10)', path: 'Cat Digital\\2026\\Sprint 22 (Oct 28 - Nov 10)', startDate: '2026-10-28', endDate: '2026-11-10' },
+      { id: 'sprint-23', name: 'Sprint 23 (Nov 11 - Nov 24)', path: 'Cat Digital\\2026\\Sprint 23 (Nov 11 - Nov 24)', startDate: '2026-11-11', endDate: '2026-11-24' },
+      { id: 'sprint-24', name: 'Sprint 24 (Nov 25 - Dec 8)', path: 'Cat Digital\\2026\\Sprint 24 (Nov 25 - Dec 8)', startDate: '2026-11-25', endDate: '2026-12-08' },
+      { id: 'sprint-25', name: 'Sprint 25 (Dec 9 - Dec 22)', path: 'Cat Digital\\2026\\Sprint 25 (Dec 9 - Dec 22)', startDate: '2026-12-09', endDate: '2026-12-22' },
+      { id: 'sprint-26', name: 'Sprint 26 (Dec 23 - Jan 5)', path: 'Cat Digital\\2026\\Sprint 26 (Dec 23 - Jan 5)', startDate: '2026-12-23', endDate: '2027-01-05' },
     ];
   }
 
   // Area Paths (Section 24: GET /api/area-paths)
   public getAvailableAreaPaths(): string[] {
     return [
-      'CAT Digital',
-      'SIT',
-      'SIT\\India',
-      'SIT\\Europe',
-      'SIT\\USA',
+      'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers',
+      'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Vikings',
+      'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Elites',
+      'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Argus',
     ];
   }
 

@@ -13,6 +13,7 @@ import {
   validateConnectionApi
 } from '../utils/api';
 import { CredentialService } from '../services/credentialService';
+import { AreaPathSelect } from './common/AreaPathSelect';
 
 interface SettingsViewProps {
   activeManager: ManagerProfileDTO;
@@ -26,6 +27,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Connection Form State
   const [org, setOrg] = useState(activeManager.organization || 'caterpillar');
   const [project, setProject] = useState(activeManager.project || 'CAT Digital');
+  const [areaPath, setAreaPath] = useState(
+    activeManager.areaPath || 'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers'
+  );
   const [patInput, setPatInput] = useState('');
   const [isReplacingPat, setIsReplacingPat] = useState(false);
 
@@ -183,8 +187,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Main Connection Form Card (Sections 22, 26, 27) */}
       <div className="bg-white border border-[#E5E7EB] p-6 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col gap-5">
         
-        {/* Organization & Project Inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Organization, Project & Default Area Path Inputs */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="text-[11px] font-mono uppercase text-[#6B7280] font-semibold block mb-1">
               Organization
@@ -210,6 +214,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               disabled={isConnected && !isReplacingPat}
               placeholder="e.g. CAT Digital"
               className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded-lg text-xs text-[#1F2937] font-mono focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none disabled:bg-[#F9FAFB] disabled:text-[#6B7280] transition-all"
+            />
+          </div>
+
+          <div>
+            <AreaPathSelect
+              value={areaPath}
+              onChange={(val) => {
+                setAreaPath(val);
+                onManagerUpdated({ ...activeManager, areaPath: val });
+              }}
+              label="Default Area Path"
+              showLabel={true}
+              id="settings-area-path-select"
             />
           </div>
         </div>

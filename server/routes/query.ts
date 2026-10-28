@@ -5,13 +5,52 @@ import { StateTransitionService } from '../services/stateTransition';
 import { IdentityMatcher, NormalizedResourceIdentity } from '../services/identityMatcher';
 import { normalize, parseTags, matchesProjectTag } from '../services/normalize';
 
+import { AzureClient, IterationService } from '../../backend/src/integrations/azureDevOps';
+
 const router = Router();
 
-// GET /api/query/sprints (or /api/sprints) - Retrieve available iteration paths
-router.get('/sprints', (req: Request, res: Response) => {
+// GET /api/query/sprints (or /api/sprints) - Retrieve available iteration paths (live ADO or verified standardized)
+export async function handleGetSprints(req: Request, res: Response) {
+  const pat = (req.headers['x-ado-pat'] as string) || (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
+  const activeManager = db.getActiveManager();
+  const org = String(activeManager.organization || 'cat-digital').trim();
+  const proj = String(activeManager.project || 'Cat Digital').trim();
+
+  if (pat && pat.trim().length > 0 && org && proj) {
+    try {
+      const client = new AzureClient(org, proj);
+      const iterationService = new IterationService(client);
+      const liveIterations = await iterationService.getIterations(pat.trim());
+      const filteredIterations = (liveIterations || []).filter((it) => {
+        const p = `${it.path || ''} ${it.name || ''}`.toLowerCase();
+        return !p.includes('sprint 19') && !p.includes('sprint 18') && !p.includes('2024');
+      });
+      if (filteredIterations && filteredIterations.length > 0) {
+        return res.json({
+          success: true,
+          source: 'ado-live',
+          sprints: filteredIterations.map((it) => ({
+            id: it.id,
+            name: it.name,
+            path: it.path,
+            startDate: it.startDate,
+            endDate: it.endDate,
+            isCurrent: it.isCurrent,
+          })),
+        });
+      }
+
+    } catch {
+      // Fall through to database standardized sprints
+    }
+  }
+
   const sprints = db.getAvailableSprints();
-  res.json({ success: true, sprints });
-});
+  res.json({ success: true, source: 'standardized', sprints });
+}
+
+router.get('/sprints', handleGetSprints);
+
 
 // GET /api/query/area-paths (or /api/area-paths) - Retrieve configurable Area Paths
 router.get('/area-paths', (req: Request, res: Response) => {

@@ -23,8 +23,10 @@ import {
   executeSprintQueryApi,
   updateStoryApi,
   getAreaPathsApi,
+  getSprintsApi,
   ManagerProfileDTO
 } from './utils/api';
+
 import { exportStoriesToCsv } from './utils/storage';
 import { INITIAL_RESOURCES } from './data/mockAdoData';
 import { 
@@ -52,6 +54,18 @@ import { normalize } from './utils/normalize';
 export default function App() {
   // Navigation tab
   const [activeTab, setActiveTab] = useState<MainNavTab>('sprint');
+
+  // Collapsible sidebar state
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const handleToggleSidebar = useCallback(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsMobileSidebarOpen((prev) => !prev);
+    } else {
+      setIsSidebarCollapsed((prev) => !prev);
+    }
+  }, []);
 
   // Subtle Easter Egg Modal state
   const [isEasterEggOpen, setIsEasterEggOpen] = useState(false);
@@ -110,7 +124,9 @@ export default function App() {
     'SIT\\Europe',
     'SIT\\USA',
   ]);
+  const [availableIterationPaths, setAvailableIterationPaths] = useState<string[]>([]);
   const [queryWarnings, setQueryWarnings] = useState<string[]>([]);
+
 
   // Stories backlog & grouped resources state (populated via Azure DevOps query)
   const [stories, setStories] = useState<WorkItemStory[]>([]);
@@ -170,6 +186,13 @@ export default function App() {
         if (areaData?.areaPaths && areaData.areaPaths.length > 0) {
           setAvailableAreaPaths(areaData.areaPaths);
         }
+
+        // Fetch Sprint Iteration Paths (live ADO or verified standardized)
+        const sprintData = await getSprintsApi().catch(() => null);
+        if (sprintData?.sprints && sprintData.sprints.length > 0) {
+          setAvailableIterationPaths(sprintData.sprints.map((s) => s.path).filter(Boolean));
+        }
+
 
         // Check localStorage for sit_nexus_resource_master first (Requirement 5)
         const storedRes = getStoredResourceMaster();
@@ -535,6 +558,11 @@ export default function App() {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
         return;
       }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        handleToggleSidebar();
+        return;
+      }
       if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         handleRunQuery();
@@ -556,7 +584,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleRunQuery]);
+  }, [handleRunQuery, handleToggleSidebar]);
 
   return (
     <div className="min-h-screen flex bg-[#F5F6F7] text-[#1F2937] font-sans selection:bg-[#FFCC00] selection:text-[#1C1C1C]">
@@ -567,6 +595,9 @@ export default function App() {
         activeManager={activeManager}
         resourceCount={resourceMaster.length}
         onTriggerEasterEgg={() => setIsEasterEggOpen(true)}
+        isCollapsed={isSidebarCollapsed}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* 2. Main Content Application Shell */}
@@ -579,6 +610,8 @@ export default function App() {
           dataSource={dataSource}
           onOpenSettings={() => setActiveTab('settings')}
           onTriggerEasterEgg={() => setIsEasterEggOpen(true)}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onToggleSidebar={handleToggleSidebar}
         />
 
         {/* Scrollable View Area */}
@@ -595,6 +628,7 @@ export default function App() {
                 totalMasterCount={resourceMaster.length}
                 availableProjects={visibleProjects}
                 availableAreaPaths={availableAreaPaths}
+                availableIterationPaths={availableIterationPaths}
                 warnings={queryWarnings}
                 resources={resourceGroups}
                 stories={displayStories}

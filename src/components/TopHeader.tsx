@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  CheckCircle2,
-  Calendar
+  Menu,
+  PanelLeftClose
 } from 'lucide-react';
 import { MainNavTab } from './Header';
 import { ManagerProfileDTO } from '../utils/api';
@@ -16,6 +16,8 @@ interface TopHeaderProps {
   onToggleMode?: () => void;
   onOpenSettings: () => void;
   onTriggerEasterEgg?: () => void;
+  isSidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
@@ -26,6 +28,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onToggleMode,
   onOpenSettings,
   onTriggerEasterEgg,
+  isSidebarCollapsed,
+  onToggleSidebar,
 }) => {
   const [clickCount, setClickCount] = useState(0);
 
@@ -63,14 +67,29 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     },
   };
 
-  const { title, subtitle } = titles[activeTab] || titles.sprint;
+  const { title } = titles[activeTab] || titles.sprint;
   const isConnected = activeManager.isConnected || CredentialService.hasPat();
 
   return (
-    <header className="h-16 bg-white border-b border-[#E5E7EB] px-5 sm:px-6 flex items-center justify-between sticky top-0 z-30 select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <header className="h-16 bg-white border-b border-[#E5E7EB] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
       
-      {/* Left: Official Caterpillar + SIT Nexus Brand Lockup (Matches Screenshot) */}
-      <div className="flex items-center gap-3 min-w-0">
+      {/* Left: Sidebar Toggle Control + Official Caterpillar + SIT Nexus Brand Lockup */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="p-1.5 rounded-lg hover:bg-[#F3F4F6] text-[#4B5563] hover:text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#FFCD11] transition-colors cursor-pointer shrink-0 flex items-center justify-center"
+          title={isSidebarCollapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
+          aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!isSidebarCollapsed}
+        >
+          {isSidebarCollapsed ? (
+            <Menu className="w-5 h-5 stroke-[2.2]" />
+          ) : (
+            <PanelLeftClose className="w-5 h-5 stroke-[2.2]" />
+          )}
+        </button>
+
         <SitNexusBrandLockup
           size="md"
           showSubtitle={true}
@@ -78,7 +97,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         />
 
         {/* Current Active Page Context */}
-        <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-[#E5E7EB] text-xs shrink-0">
+        <div className="hidden md:flex items-center gap-2 pl-3 border-l border-[#E5E7EB] text-xs shrink-0">
           <span className="font-semibold text-[#4B5563] font-sans">{title}</span>
         </div>
       </div>
@@ -94,7 +113,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           title="SIT Nexus Real Azure DevOps REST API Integration"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-          <span>REAL AZURE DEVOPS</span>
+          <span className="hidden sm:inline">REAL AZURE DEVOPS</span>
+          <span className="sm:hidden">ADO</span>
         </button>
 
         {/* Connection Status Indicator */}
@@ -122,4 +142,3 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     </header>
   );
 };
-
