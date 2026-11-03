@@ -29,14 +29,16 @@ export const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               <Info className="w-3 h-3 stroke-[2.2]" />
             </button>
             <span
-              id="creator-info-tooltip"
-              role="tooltip"
-              className="pointer-events-none absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-50 px-2 py-0.5 bg-[#1F2937] text-white text-[11px] font-sans font-medium rounded shadow-md whitespace-nowrap"
-            >
-              Karthikeyan
-              <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1F2937]" />
-            </span>
-          </span>
+  id="creator-info-tooltip"
+  role="tooltip"
+  className="pointer-events-none absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-50 px-3 py-2 bg-[#1F2937] text-white text-[11px] font-sans font-medium rounded shadow-md whitespace-nowrap text-center"
+>
+  <span className="block">For Any Queries or Suggestions</span>
+  <span className="block">Please Contact</span>
+  <span className="block font-semibold">Karthikeyan R</span>
+  <span className="block">karthikeyan.r@cat.com</span>
+  <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1F2937]" />
+</span>          </span>
         </span>
       </div>
     </footer>
