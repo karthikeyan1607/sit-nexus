@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { db, StoredStory, StoredClosureAudit, StoredClosureAuditDetail } from '../db';
+import { db, StoredResource, StoredStory, StoredClosureAudit, StoredClosureAuditDetail } from '../db';
 import { adoService, QueryExecutionInput } from '../adoService';
 import { StateTransitionService } from '../services/stateTransition';
 import { IdentityMatcher, NormalizedResourceIdentity } from '../services/identityMatcher';
@@ -8,6 +8,21 @@ import { normalize, parseTags, matchesProjectTag } from '../services/normalize';
 import { AzureClient, IterationService, WorkItemService } from '../../backend/src/integrations/azureDevOps';
 
 const router = Router();
+
+const getBrowserOwnerId = (req: Request): string => String(req.headers['x-sit-nexus-client-id'] || '').trim();
+const isValidBrowserOwnerId = (value: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+const getResourceMaster = (value: unknown): StoredResource[] =>
+  Array.isArray(value) ? value.filter((item) => item && typeof item.name === 'string').map((item) => ({
+    id: String(item.id || ''),
+    name: String(item.name || '').trim(),
+    region: String(item.region || '').trim(),
+    email: String(item.email || '').trim(),
+    normalized_name: String(item.name || '').trim().toLowerCase(),
+    normalized_email: String(item.email || '').trim().toLowerCase(),
+    status: item.status === 'Inactive' ? 'Inactive' : 'Active',
+    is_active: item.status !== 'Inactive',
+  })) : [];
 
 // GET /api/query/sprints (or /api/sprints) - Retrieve available iteration paths (live ADO or verified standardized)
 export async function handleGetSprints(req: Request, res: Response) {
@@ -19,9 +34,8 @@ export async function handleGetSprints(req: Request, res: Response) {
     });
   }
 
-  const activeManager = db.getActiveManager();
-  const org = String(activeManager.organization || '').trim();
-  const proj = String(activeManager.project || '').trim();
+  const org = String(req.query.organization || '').trim();
+  const proj = String(req.query.project || '').trim();
   if (!org || !proj) {
     return res.status(409).json({
       success: false,
@@ -77,9 +91,8 @@ interface AzureClassificationNode {
 
 /** Retrieve the configured Area Path tree from the live Azure DevOps project. */
 export async function handleGetAreaPaths(req: Request, res: Response) {
-  const activeManager = db.getActiveManager();
-  const organization = String(activeManager.organization || '').trim();
-  const project = String(activeManager.project || '').trim();
+  const organization = String(req.query.organization || '').trim();
+  const project = String(req.query.project || '').trim();
   const pat = (req.headers['x-ado-pat'] as string) ||
     (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\\s+/i, '') : '');
 
@@ -131,16 +144,14 @@ router.get('/area-paths', handleGetAreaPaths);
 
 // POST /api/query - Execute Azure DevOps sprint query
 router.post('/', async (req: Request, res: Response) => {
-  const { region, project, projectTag, sprint, iterationPath, areaPath } = req.body;
-  const targetProjectTag = String(projectTag || project || 'All Projects').trim();
+  const { region, projectTag, sprint, iterationPath, areaPath } = req.body;
+  const targetProjectTag = String(projectTag || 'All Projects').trim();
   const targetRegion = String(region || 'All').trim();
   const targetIteration = String(iterationPath || sprint || '').trim();
-
-  const activeManager = db.getActiveManager();
-  const resourceMaster = db.getResources() || [];
-  const org = String(activeManager.organization || '').trim();
-  const proj = String(activeManager.project || '').trim();
-  const targetArea = String(areaPath || activeManager.areaPath || '').trim();
+  const resourceMaster = getResourceMaster(req.body?.resourceMaster);
+  const org = String(req.body?.organization || '').trim();
+  const proj = String(req.body?.project || '').trim();
+  const targetArea = String(areaPath || '').trim();
 
   // PAT is currently supplied by the legacy browser flow. Day 3 replaces this
   // with the authenticated user's server-side credential reference.
@@ -235,7 +246,7 @@ router.post('/', async (req: Request, res: Response) => {
       success: true,
       dataSource: 'azure',
       manager: {
-        name: activeManager.name,
+        name: String(req.body?.managerName || 'Local Manager'),
         organization: org,
         project: proj,
         isConnected: true,
@@ -296,7 +307,10 @@ router.patch('/stories/:id', async (req: Request, res: Response) => {
     });
   }
 
-  const { status, storyPoints, standupNotes, blockedReason, isReviewedToday } = req.body ?? {};
+  const { status, storyPoints, organization: requestOrganization, project: requestProject } = req.body ?? {};
+  const standupNotes = undefined;
+  const blockedReason = undefined;
+  const isReviewedToday = undefined;
   const unsupportedAnnotations = [
     ...(standupNotes !== undefined ? ['standupNotes'] : []),
     ...(blockedReason !== undefined ? ['blockedReason'] : []),
@@ -340,9 +354,8 @@ router.patch('/stories/:id', async (req: Request, res: Response) => {
     });
   }
 
-  const activeManager = db.getActiveManager();
-  const organization = String(activeManager.organization || '').trim();
-  const project = String(activeManager.project || '').trim();
+  const organization = String(requestOrganization || '').trim();
+  const project = String(requestProject || '').trim();
   const pat = (req.headers['x-ado-pat'] as string) ||
     (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\\s+/i, '') : '');
 
@@ -394,12 +407,10 @@ router.patch('/stories/:id', async (req: Request, res: Response) => {
 // POST /api/query/sprint-close/preview or /api/sprint-close/preview - Generate Preview Before Closure (Sections 1 - 14)
 router.post(['/sprint-close/preview', '/preview'], async (req: Request, res: Response) => {
   const { sprint, iterationPath, areaPath, region, actionType = 'close_internal_review' } = req.body;
-  const activeManager = db.getActiveManager();
-  const resourceMaster = db.getResources() || [];
-
-  const org = String(activeManager.organization || '').trim();
-  const proj = String(activeManager.project || '').trim();
-  const targetArea = String(areaPath || activeManager.areaPath || '').trim();
+  const resourceMaster = getResourceMaster(req.body?.resourceMaster);
+  const org = String(req.body?.organization || '').trim();
+  const proj = String(req.body?.project || '').trim();
+  const targetArea = String(areaPath || '').trim();
   const targetIteration = String(iterationPath || sprint || '').trim();
   const targetRegion = String(region || 'All').trim();
 
@@ -435,7 +446,7 @@ router.post(['/sprint-close/preview', '/preview'], async (req: Request, res: Res
       ineligibleStories: previewResult.ineligibleStories,
       diagnostics: previewResult.diagnostics,
       wiql: previewResult.wiql,
-      managerCanUpdate: Boolean(activeManager.permissions?.workItemUpdate),
+      managerCanUpdate: Boolean((await adoService.validateConnection(org, proj, pat ? pat.trim() : '')).permissions.workItemUpdate),
       dataSource: previewResult.dataSource,
     });
   } catch (err: unknown) {
@@ -457,23 +468,17 @@ router.post(['/sprint-close/preview', '/preview'], async (req: Request, res: Res
 // POST /api/query/sprint-close/execute or /api/sprint-close/execute - Bulk Update Azure DevOps Stories (Sections 15 - 19)
 router.post(['/sprint-close/execute', '/execute'], async (req: Request, res: Response) => {
   const { sprint, iterationPath, areaPath, region, storyIds = [] } = req.body;
-  const activeManager = db.getActiveManager();
-  const resourceMaster = db.getResources() || [];
-
-  // Permission Check
-  if (!activeManager.permissions?.workItemUpdate) {
-    return res.status(403).json({
+  const resourceMaster = getResourceMaster(req.body?.resourceMaster);
+  const clientId = getBrowserOwnerId(req);
+  if (!isValidBrowserOwnerId(clientId)) {
+    return res.status(400).json({
       success: false,
-      error: {
-        code: 'AZURE_PERMISSION_DENIED',
-        message: 'Permission Denied: You do not have permission to close or update sprint stories in Azure DevOps.'
-      }
+      error: { code: 'BROWSER_ID_REQUIRED', message: 'A valid browser installation identifier is required for private audit history.' },
     });
   }
-
-  const org = String(activeManager.organization || '').trim();
-  const proj = String(activeManager.project || '').trim();
-  const targetArea = String(areaPath || activeManager.areaPath || '').trim();
+  const org = String(req.body?.organization || '').trim();
+  const proj = String(req.body?.project || '').trim();
+  const targetArea = String(areaPath || '').trim();
   const targetIteration = String(iterationPath || sprint || '').trim();
   const targetRegion = String(region || 'All').trim();
 
@@ -488,8 +493,8 @@ router.post(['/sprint-close/execute', '/execute'], async (req: Request, res: Res
         iterationPath: targetIteration,
         region: targetRegion,
         storyIds: Array.isArray(storyIds) ? storyIds.map(Number) : [],
-        managerName: activeManager.name,
-        managerId: activeManager.id,
+        managerName: String(req.body?.managerName || 'Local Manager'),
+        managerId: clientId,
       },
       resourceMaster,
       pat.trim()
@@ -513,7 +518,14 @@ router.post(['/sprint-close/execute', '/execute'], async (req: Request, res: Res
 
 // GET /api/query/sprint-close/history or /api/sprint-close/history - Retrieve closure history & audit logs
 router.get(['/sprint-close/history', '/history'], (req: Request, res: Response) => {
-  const history = db.getClosureAuditLog();
+  const clientId = getBrowserOwnerId(req);
+  if (!isValidBrowserOwnerId(clientId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'BROWSER_ID_REQUIRED', message: "A valid browser installation identifier is required to read this browser's audit history." },
+    });
+  }
+  const history = db.getClosureAuditLog(clientId);
   res.json({
     success: true,
     history,

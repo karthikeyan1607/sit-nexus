@@ -1,60 +1,37 @@
-# SIT Nexus Corporate Migration — Database Abstraction and Schema Contract
+# SIT Nexus persistence decision
 
-## Platform decision
+## Agreed product model
 
-The database engine is intentionally not selected yet. Do not assume PostgreSQL or SQL Server is approved. Implement a repository/service boundary and select the concrete driver after CAT IT confirms the supported on-prem database and version.
+SIT Nexus is one centrally hosted application, but manager-owned working data remains independent in each manager's browser.
 
-The logical model below is portable. Physical DDL, identity columns, JSON storage, filtered indexes and migration syntax must be generated for the selected engine.
+Browser-local data:
+- Azure DevOps PAT and connection metadata.
+- Resource Master.
+- Project/tag visibility preferences.
+- Query selections and personal UI settings.
+- Daily standup review state.
+- SIT Nexus-only story annotations such as standup notes and blocked reasons.
 
-## Logical entities
+Azure DevOps remains authoritative for work items, assignments, states, story points, iterations, Area Paths and tags.
 
-| Entity | Key fields | Rules |
-|---|---|---|
-| users | id, corporate_subject, email, display_name, status | corporate_subject unique and sourced only from verified identity |
-| roles | id, code | ADMIN, REGIONAL_MANAGER, READ_ONLY_MANAGER as approved |
-| user_roles | user_id, role_id | composite unique; no client role self-assignment |
-| projects | id, ado_project_id, name, active | ado_project_id unique |
-| user_permissions | user_id, project_id, region_code, permission_code | explicit grants; server-side authorization |
-| resources | id, external_identity, display_name, email, region_code, active | no demo seed; master data imported by authorized manager |
-| project_tags | id, project_id, tag_name, visible, source | uniqueness within project; ADO-discovered tags reconciled from live source |
-| sprint_configurations | id, project_id, region_code, iteration_path, area_path, updated_by | configuration scoped to project and region |
-| user_settings | user_id, settings_document, updated_at | personal preferences only; never PAT |
-| user_sessions | id, user_id, expires_at, revoked_at | opaque session IDs; secure server-side session store |
-| audit_events | id, actor_user_id, action, entity_type, entity_id, correlation_id, details, occurred_at | append-only; never record PAT or authorization headers |
-| sprint_closure_audits | id, actor_user_id, project_id, region_code, iteration_path, status, started_at, completed_at | auditable operation history |
-| sprint_closure_audit_details | id, audit_id, work_item_id, previous_state, requested_state, actual_state, status, error_code | no secrets; retain enough evidence for partial failure review |
+## Server persistence
 
-## Credential storage
+The only application data that requires durable server persistence under the current product requirements is Sprint Closure audit history. Each audit record is partitioned by a browser-installation owner ID. A browser can read only records written under its own owner ID.
 
-PAT is not a normal application entity and must not be added as a plaintext column to these tables.
+The implementation uses a small JSON audit store, not SQL. Production must configure `SIT_NEXUS_AUDIT_FILE` to a CAT-managed persistent volume. The file is written atomically. A single application instance is assumed; multi-instance deployments require a shared transactional store or an equivalent durable service.
 
-Preferred order:
-1. CAT-approved secret vault with per-user secret references and least-privilege access.
-2. If vault integration is unavailable, approved server-side encrypted ephemeral/session storage with explicit expiry and key management.
-3. If CAT security approves neither, require the user to re-enter the PAT per session and keep it only in process memory for that session.
+## Identity and security boundary
 
-Do not use browser localStorage, do not send PAT on every query request from the browser, and do not use a shared team PAT.
+CAT SSO is not implemented in this phase. The application is intended to be reachable only through CAT-approved network paths/VDI. CAT infrastructure must enforce that network boundary.
 
-## Repository interfaces
+The browser-installation ID is an opaque per-browser audit namespace, not a verified CAT employee identity. It is not suitable as a replacement for SSO or as proof of employee identity. Clearing browser site data can remove the namespace key; audit records remain on the server but the original browser can no longer address them unless the key is restored.
 
-Define interfaces around use cases rather than exposing a generic mutable database object:
+PATs remain in each manager's browser localStorage per the agreed product behaviour. They are sent only in HTTPS request headers, never persisted by the server, never logged, and never written to audit records. localStorage remains exposed to same-origin JavaScript; CAT security approval and XSS protections are required before production.
 
-- UserRepository: findByCorporateSubject, getUserRoles, getUserPermissions
-- ResourceRepository: listAuthorized, replaceMaster, create, update, deactivate
-- ProjectRepository: listAuthorized, reconcileTags, updateVisibility
-- SprintConfigurationRepository: listAuthorized, upsert
-- UserSettingsRepository: get, update
-- AuditRepository: append, listAuthorized
-- SessionRepository: create, find, revoke, revokeUserSessions
+## Explicitly deferred
 
-Every method that returns business data must accept an authenticated principal or an already-validated authorization scope. Avoid methods such as getActiveManager() and setActiveManager().
-
-## Migration safety
-
-- Do not copy seeded/mock stories or fake resources into production.
-- Treat Azure DevOps as the source of truth for work items.
-- Import resource master only from a manager-approved, validated source file.
-- Preserve genuine sprint closure audit records only after validating their provenance.
-- Use a dry-run report showing counts, duplicates, rejected rows and source provenance before applying any migration.
-- Back up the source and target databases before cutover.
-- Use transaction boundaries and rollback/reconciliation scripts.
+- CAT SSO/OIDC integration, pending a CAT-hosted access model decision.
+- SQL database adapter, because manager working data is browser-local and audit-only persistence can use a CAT-managed durable volume for a single instance.
+- Cross-device audit access.
+- Shared Resource Master or project preferences.
+- Centralized manager profiles and global active-manager state.

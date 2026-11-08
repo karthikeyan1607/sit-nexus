@@ -1,26 +1,18 @@
-import { fileURLToPath } from 'url';
+import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
-import dotenv from 'dotenv';
-import authRoutes from './server/routes/auth';
 import connectionRoutes from './server/routes/connection';
-import resourceRoutes from './server/routes/resources';
-import projectRoutes from './server/routes/projects';
 import queryRoutes, { handleGetSprints, handleGetAreaPaths } from './server/routes/query';
 import { db } from './server/db';
-import { createCorporateRoutes } from './server/corporate/routes';
 
-
-dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
-// The legacy APIs still depend on a process-wide manager and JSON-file storage.
-// Refuse all production startup until those routes are replaced by authenticated,
-// request-scoped services backed by CAT's approved corporate database.
-if (isProduction) {
-  throw new Error('SIT Nexus production startup is disabled: corporate identity, SQL persistence, and legacy API migration must be completed before release.');
+// Production audit history must use a CAT-managed persistent volume. This does not
+// authenticate CAT employees; CAT network/VDI access restrictions are enforced by infrastructure.
+if (isProduction && (!process.env.SIT_NEXUS_AUDIT_FILE || !path.isAbsolute(process.env.SIT_NEXUS_AUDIT_FILE))) {
+  throw new Error('SIT Nexus production startup requires SIT_NEXUS_AUDIT_FILE to point to a CAT-managed persistent volume.');
 }
 
 // Body parser
@@ -34,16 +26,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Corporate identity foundation (fail-closed until CAT SSO adapter is configured).
-app.use('/api/v1', createCorporateRoutes());
-
-// Legacy routes remain temporarily mounted during staged migration; do not expose this
-// branch as a production release until the remaining legacy routes are secured/replaced.
-// API Routes
+// Connection validation is stateless. Resource Master and project settings remain browser-local.
 app.use('/api/connection', connectionRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/resources', resourceRoutes);
-app.use('/api/projects', projectRoutes);
 app.use('/api/query', queryRoutes);
 
 // Direct specification endpoints. Iterations are fetched from Azure DevOps only;
@@ -53,7 +37,12 @@ app.get('/api/sprints', handleGetSprints);
 app.get('/api/area-paths', handleGetAreaPaths);
 
 app.use('/api/audit', (req: Request, res: Response) => {
-  res.json({ success: true, history: db.getClosureAuditLog(), data: db.getClosureAuditLog() });
+  const clientId = String(req.headers['x-sit-nexus-client-id'] || '').trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(clientId)) {
+    return res.status(400).json({ success: false, error: { code: 'BROWSER_ID_REQUIRED', message: 'A valid browser installation identifier is required.' } });
+  }
+  const history = db.getClosureAuditLog(clientId);
+  return res.json({ success: true, history, data: history });
 });
 
 app.use('/api/sprint-close', queryRoutes);

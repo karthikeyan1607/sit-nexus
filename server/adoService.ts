@@ -585,14 +585,7 @@ ORDER BY [System.Id] DESC`;
       return story;
     });
 
-    // Register any discovered project tags in database
-    if (allDiscoveredTags.size > 0) {
-      allDiscoveredTags.forEach((tagName) => {
-        db.upsertProjectTag(tagName);
-      });
-    }
-
-    // 6. Identity matching & Region filtering (Section 13 & 14)
+    // Project tag visibility is maintained independently in each manager's browser.\n\n    // 6. Identity matching & Region filtering (Section 13 & 14)
     const normalizedMaster: NormalizedResourceIdentity[] = (resourceMaster || [])
       .filter((r) => r && (r.name || r.email))
       .map((r) => ({

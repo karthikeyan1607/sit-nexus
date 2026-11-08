@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { db } from '../db';
 import { adoService } from '../adoService';
 
 const router = Router();
@@ -72,17 +71,7 @@ router.post('/validate', async (req: Request, res: Response) => {
     });
   }
 
-  // Update default manager organization & project in database (NO PAT SAVED)
-  const activeManager = db.getActiveManager();
-  activeManager.organization = org;
-  activeManager.project = proj;
-  if (req.body.areaPath && String(req.body.areaPath).trim()) {
-    activeManager.areaPath = String(req.body.areaPath).trim();
-  }
-  db.upsertManager(activeManager);
-
-  // Return connection result - NEVER return the PAT!
-  res.json({
+  // Connection configuration is kept in the requesting browser; this endpoint only validates the supplied PAT.\n\n  // Return connection result - NEVER return the PAT!\n  res.json({
     success: true,
     data: {
       connected: true,
@@ -98,25 +87,11 @@ router.post('/validate', async (req: Request, res: Response) => {
  * GET /api/connection/status (Section 19)
  * Returns current Azure DevOps connection metadata
  */
-router.get('/status', (req: Request, res: Response) => {
-  const activeManager = db.getActiveManager();
-
-  res.json({
-    success: true,
-    data: {
-      organization: activeManager.organization || '',
-      project: activeManager.project || '',
-      areaPath: activeManager.areaPath || '',
-      manager: {
-        id: activeManager.id,
-        name: activeManager.name,
-        email: activeManager.email,
-        role: activeManager.role,
-        region: activeManager.region || 'All'
-      }
-    }
+router.get('/status', (_req: Request, res: Response) => {
+  return res.status(410).json({
+    success: false,
+    error: { code: 'BROWSER_LOCAL_CONNECTION_STATE', message: 'Connection state is maintained independently in each browser.' },
   });
 });
-
 
 export default router;
