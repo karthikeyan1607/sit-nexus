@@ -439,8 +439,10 @@ export async function getSprintsApi(): Promise<{
 }
 
 
-export async function getAreaPathsApi(): Promise<{ success: boolean; areaPaths: string[] }> {
-  const res = await fetch(`${API_BASE}/area-paths`);
+export async function getAreaPathsApi(): Promise<{ success: boolean; source?: string; areaPaths: string[] }> {
+  const res = await fetch(`${API_BASE}/area-paths`, {
+    headers: getAuthHeaders(),
+  });
   return handleResponse(res);
 }
 
