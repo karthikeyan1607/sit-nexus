@@ -418,15 +418,6 @@ export async function executeClosureApi(params: {
   return handleResponse(res);
 }
 
-export async function switchDataSourceModeApi(mode: 'mock' | 'azure'): Promise<{ success: boolean; message: string; dataSource: 'mock' | 'azure' }> {
-  const res = await fetch(`${API_BASE}/auth/mode`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode }),
-  });
-  return handleResponse(res);
-}
-
 export async function getSprintsApi(): Promise<{
   success: boolean;
   source?: string;
