@@ -28,6 +28,7 @@ test('audit records persist after store recreation and are isolated by browser o
   const file = path.join(directory, 'audit.json');
   try {
     const firstInstance = new AuditStore(file);
+    firstInstance.assertWritable();
     firstInstance.addClosureAuditRecord(record('audit-a', 'browser-a'));
     firstInstance.addClosureAuditRecord(record('audit-b', 'browser-b'));
 
