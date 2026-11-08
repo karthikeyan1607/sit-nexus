@@ -804,8 +804,8 @@ ORDER BY [System.Id] DESC`;
     resourceMaster: StoredResource[],
     pat: string
   ): Promise<SprintClosurePreviewResult> {
-    const org = String(params.organization || 'cat-digital').trim();
-    const proj = String(params.project || 'Cat Digital').trim();
+    const org = String(params.organization || '').trim();
+    const proj = String(params.project || '').trim();
     const area = String(params.areaPath || '').trim();
     const iteration = String(params.iterationPath || '').trim();
     const region = String(params.region || 'All').trim();
