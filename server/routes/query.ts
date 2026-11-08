@@ -94,7 +94,7 @@ export async function handleGetAreaPaths(req: Request, res: Response) {
   const organization = String(req.query.organization || '').trim();
   const project = String(req.query.project || '').trim();
   const pat = (req.headers['x-ado-pat'] as string) ||
-    (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\\s+/i, '') : '');
+    (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
 
   if (!pat.trim()) {
     return res.status(401).json({
@@ -156,7 +156,7 @@ router.post('/', async (req: Request, res: Response) => {
   // PAT is currently supplied by the legacy browser flow. Day 3 replaces this
   // with the authenticated user's server-side credential reference.
   const pat = (req.headers['x-ado-pat'] as string) ||
-    (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\\s+/i, '') : '');
+    (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
 
   if (!pat.trim()) {
     return res.status(401).json({
@@ -357,7 +357,7 @@ router.patch('/stories/:id', async (req: Request, res: Response) => {
   const organization = String(requestOrganization || '').trim();
   const project = String(requestProject || '').trim();
   const pat = (req.headers['x-ado-pat'] as string) ||
-    (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\\s+/i, '') : '');
+    (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
 
   if (!pat.trim()) {
     return res.status(401).json({
