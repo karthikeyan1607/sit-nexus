@@ -472,7 +472,7 @@ router.post(['/sprint-close/execute', '/execute'], async (req: Request, res: Res
   if (!isValidBrowserOwnerId(clientId)) {
     return res.status(400).json({
       success: false,
-      error: { code: 'BROWSER_ID_REQUIRED', message: 'A valid browser installation identifier is required for private audit history.' },
+      error: { code: 'AUDIT_SESSION_REQUIRED', message: 'A signed browser audit session is required for private closure history.' },
     });
   }
   const org = String(req.body?.organization || '').trim();
@@ -530,7 +530,7 @@ router.get(['/sprint-close/history', '/history'], (req: Request, res: Response) 
   if (!isValidBrowserOwnerId(clientId)) {
     return res.status(400).json({
       success: false,
-      error: { code: 'BROWSER_ID_REQUIRED', message: "A valid browser installation identifier is required to read this browser's audit history." },
+      error: { code: 'BROWSER_ID_REQUIRED', message: "A signed browser audit session is required to read this browser's closure history." },
     });
   }
   const history = db.getClosureAuditLog(clientId);
