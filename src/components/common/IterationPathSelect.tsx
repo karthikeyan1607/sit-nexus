@@ -1,11 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { CalendarDays, ChevronDown } from 'lucide-react';
-import { 
-  CENTRALIZED_ITERATION_PATHS, 
-  normalizeIterationPath, 
-  isUnwantedIterationPath, 
-  DEFAULT_ITERATION_PATH 
-} from '../../constants/paths';
 
 export interface IterationPathSelectProps {
   value: string;
@@ -20,18 +14,7 @@ export interface IterationPathSelectProps {
   additionalOptions?: string[];
 }
 
-/**
- * Reusable IterationPathSelect component for SIT Nexus.
- * Provides a standardized dropdown for selecting Azure DevOps Iteration Paths.
- * Features:
- * - Verified sequential 2-week sprint schedule through December 2026 (Sprint 20 to Sprint 26)
- * - Automatic migration/normalization of legacy typo or placeholder paths
- * - Unwanted options (Sprint 18, Sprint 19, 2024) filtered out and defaulted cleanly
- * - Tooltip displaying the complete path
- * - Clean ellipsis truncation to protect responsive layouts
- * - Visible focus ring (#FFCD11) matching CAT styling
- * - Full keyboard accessibility
- */
+/** Iteration choices are supplied exclusively by the live Azure DevOps API. */
 export const IterationPathSelect: React.FC<IterationPathSelectProps> = ({
   value,
   onChange,
@@ -44,61 +27,11 @@ export const IterationPathSelect: React.FC<IterationPathSelectProps> = ({
   label = 'ITERATION PATH',
   additionalOptions = [],
 }) => {
-  // Normalize legacy or placeholder values if present, or reset unwanted options to predictable default
-  useEffect(() => {
-    if (value) {
-      if (isUnwantedIterationPath(value)) {
-        onChange(DEFAULT_ITERATION_PATH);
-      } else {
-        const normalized = normalizeIterationPath(value);
-        if (normalized !== value) {
-          onChange(normalized);
-        }
-      }
-    }
-  }, [value, onChange]);
-
-  // Combine centralized options, any dynamic options from ADO/backend, and current value
   const options = React.useMemo(() => {
-    // Start with centralized verified paths (strictly excluding unwanted options & placeholders)
-    const list = [...CENTRALIZED_ITERATION_PATHS].filter(
-      (item) => !isUnwantedIterationPath(item.value) && !isUnwantedIterationPath(item.label)
-    );
-
-    // Merge any additional verified options from ADO or backend not already present
-    additionalOptions.forEach((opt) => {
-      if (!opt || isUnwantedIterationPath(opt)) return;
-      const cleanOpt = normalizeIterationPath(opt);
-      if (
-        !isUnwantedIterationPath(cleanOpt) &&
-        !list.some((item) => item.value === cleanOpt || item.label === cleanOpt)
-      ) {
-        list.push({
-          value: cleanOpt,
-          label: cleanOpt,
-          isVerified: true,
-        });
-      }
-    });
-
-    // Ensure the current active value is present in the list (if valid and not unwanted)
-    const cleanValue = normalizeIterationPath(value);
-    if (
-      cleanValue && 
-      !isUnwantedIterationPath(cleanValue) && 
-      !list.some((item) => item.value === cleanValue)
-    ) {
-      list.unshift({
-        value: cleanValue,
-        label: cleanValue,
-        isVerified: true,
-      });
-    }
-
+    const list = [...new Set(additionalOptions.filter(Boolean))];
+    if (value && !list.includes(value)) list.unshift(value);
     return list;
   }, [value, additionalOptions]);
-
-
 
   return (
     <div className={`flex flex-col gap-1 w-full ${className}`}>
@@ -118,18 +51,14 @@ export const IterationPathSelect: React.FC<IterationPathSelectProps> = ({
           name={name}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
+          disabled={disabled || options.length === 0}
           aria-label={label || 'Select Iteration Path'}
           className="w-full h-9 bg-white border border-[#D1D5DB] focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-mono font-medium text-[#1F2937] rounded-lg pl-3 pr-8 py-1.5 appearance-none outline-none transition-all truncate cursor-pointer disabled:bg-[#F9FAFB] disabled:text-[#9CA3AF] disabled:cursor-not-allowed"
         >
-          {options.map((opt) => (
-            <option
-              key={opt.value}
-              value={opt.value}
-              title={opt.label}
-              className="py-1 font-mono text-xs text-[#1F2937] bg-white"
-            >
-              {opt.label}
+          <option value="">{options.length ? 'Select Iteration Path' : 'Connect Azure DevOps to load iterations'}</option>
+          {options.map((option) => (
+            <option key={option} value={option} title={option} className="py-1 font-mono text-xs text-[#1F2937] bg-white">
+              {option}
             </option>
           ))}
         </select>
