@@ -8,6 +8,7 @@ import resourceRoutes from './server/routes/resources';
 import projectRoutes from './server/routes/projects';
 import queryRoutes from './server/routes/query';
 import { db } from './server/db';
+import { createCorporateRoutes } from './server/corporate/routes';
 
 
 dotenv.config();
@@ -27,6 +28,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Corporate identity foundation (fail-closed until CAT SSO adapter is configured).
+app.use('/api/v1', createCorporateRoutes());
+
+// Legacy routes remain temporarily mounted during staged migration; do not expose this
+// branch as a production release until the remaining legacy routes are secured/replaced.
 // API Routes
 app.use('/api/connection', connectionRoutes);
 app.use('/api/auth', authRoutes);
