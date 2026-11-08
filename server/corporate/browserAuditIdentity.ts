@@ -10,7 +10,8 @@ function signature(ownerId: string, secret: string): string {
 function readCookie(requestCookie: string | undefined): string | null {
   if (!requestCookie) return null;
   const item = requestCookie.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE_NAME}=`));
-  return item ? decodeURIComponent(item.slice(COOKIE_NAME.length + 1)) : null;
+  if (!item) return null;
+  try { return decodeURIComponent(item.slice(COOKIE_NAME.length + 1)); } catch { return null; }
 }
 function verify(value: string | null, secret: string): string | null {
   if (!value) return null;
