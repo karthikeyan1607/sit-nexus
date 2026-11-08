@@ -152,9 +152,17 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
   }, [activeSubTab]);
 
   const fetchPreview = async () => {
+    setExecutionResult(null);
+    if (!selectedSprint || !selectedAreaPath) {
+      setPreviewData(null);
+      setSelectedStoryIds([]);
+      setIsLoadingPreview(false);
+      setPreviewError('Connect to Azure DevOps and select a live Iteration Path and Area Path to preview sprint closure.');
+      return;
+    }
+
     setIsLoadingPreview(true);
     setPreviewError(null);
-    setExecutionResult(null);
 
     try {
       const data = await getClosurePreviewApi({
@@ -544,9 +552,9 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
                   className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded-lg text-xs text-[#1F2937] font-semibold focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none cursor-pointer transition-all"
                 >
                   <option value="All Regions">All Regions</option>
-                  <option value="India">India</option>
-                  <option value="Europe">Europe</option>
-                  <option value="USA">USA</option>
+                  {dynamicRegions.map(({ region }) => (
+                    <option key={region} value={region}>{region}</option>
+                  ))}
                 </select>
               </div>
 
