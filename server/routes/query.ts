@@ -24,7 +24,7 @@ const getResourceMaster = (value: unknown): StoredResource[] =>
     is_active: item.status !== 'Inactive',
   })) : [];
 
-// GET /api/query/sprints (or /api/sprints) - Retrieve available iteration paths (live ADO or verified standardized)
+// GET /api/query/sprints (or /api/sprints) - Retrieve live Azure DevOps iteration paths only
 export async function handleGetSprints(req: Request, res: Response) {
   const pat = (req.headers['x-ado-pat'] as string) || (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
   if (!pat?.trim()) {
@@ -153,8 +153,7 @@ router.post('/', async (req: Request, res: Response) => {
   const proj = String(req.body?.project || '').trim();
   const targetArea = String(areaPath || '').trim();
 
-  // PAT is currently supplied by the legacy browser flow. Day 3 replaces this
-  // with the authenticated user's server-side credential reference.
+  // The requesting browser supplies its own PAT. The backend never persists it.
   const pat = (req.headers['x-ado-pat'] as string) ||
     (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
 
@@ -307,10 +306,10 @@ router.patch('/stories/:id', async (req: Request, res: Response) => {
     });
   }
 
-  const { status, storyPoints, organization: requestOrganization, project: requestProject } = req.body ?? {};
-  const standupNotes = undefined;
-  const blockedReason = undefined;
-  const isReviewedToday = undefined;
+  const {
+    status, storyPoints, organization: requestOrganization, project: requestProject,
+    standupNotes, blockedReason, isReviewedToday,
+  } = req.body ?? {};
   const unsupportedAnnotations = [
     ...(standupNotes !== undefined ? ['standupNotes'] : []),
     ...(blockedReason !== undefined ? ['blockedReason'] : []),
@@ -321,7 +320,7 @@ router.patch('/stories/:id', async (req: Request, res: Response) => {
       success: false,
       error: {
         code: 'STORY_ANNOTATIONS_NOT_MIGRATED',
-        message: `These SIT Nexus-only fields are not yet backed by approved persistence: ${unsupportedAnnotations.join(', ')}. No changes were sent to Azure DevOps.`,
+        message: `These SIT Nexus-only fields belong in the manager's browser-local workspace: ${unsupportedAnnotations.join(', ')}. No changes were sent to Azure DevOps.`,
       },
     });
   }
