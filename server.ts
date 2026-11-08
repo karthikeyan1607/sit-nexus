@@ -16,6 +16,14 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
+const corporateReleaseMode = process.env.CORPORATE_RELEASE_MODE === 'true';
+
+// The legacy APIs still depend on a process-wide manager and JSON-file storage.
+// Refuse production startup until those routes are migrated to authenticated,
+// request-scoped services backed by the approved corporate database.
+if (isProduction && corporateReleaseMode && process.env.CORPORATE_MIGRATION_COMPLETE !== 'true') {
+  throw new Error('Corporate release blocked: legacy API routes, identity integration, and SQL persistence migration are not complete.');
+}
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
