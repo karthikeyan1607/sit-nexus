@@ -111,3 +111,63 @@ export function exportStoriesToCsv(stories: WorkItemStory[], filename = 'SIT-Nex
   link.click();
   document.body.removeChild(link);
 }
+
+
+export interface StoryLocalAnnotations {
+  standupNotes?: string;
+  blockedReason?: string;
+}
+const STORY_ANNOTATIONS_KEY = 'sit_nexus_story_annotations_v1';
+const STANDUP_REVIEW_KEY = 'sit_nexus_standup_review_v1';
+
+export function loadStoryAnnotations(): Record<string, StoryLocalAnnotations> {
+  try {
+    const raw = localStorage.getItem(STORY_ANNOTATIONS_KEY);
+    return raw ? JSON.parse(raw) as Record<string, StoryLocalAnnotations> : {};
+  } catch { return {}; }
+}
+
+export function saveStoryAnnotations(storyId: number, annotations: StoryLocalAnnotations): void {
+  try {
+    const current = loadStoryAnnotations();
+    current[String(storyId)] = { ...current[String(storyId)], ...annotations };
+    localStorage.setItem(STORY_ANNOTATIONS_KEY, JSON.stringify(current));
+  } catch {
+    throw new Error('Unable to save SIT Nexus story notes in this browser.');
+  }
+}
+
+function todayKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+}
+export function loadStandupReviewState(): string[] {
+  try {
+    const raw = localStorage.getItem(STANDUP_REVIEW_KEY);
+    const parsed = raw ? JSON.parse(raw) as Record<string, string[]> : {};
+    return parsed[todayKey()] || [];
+  } catch { return []; }
+}
+export function setStandupResourceReviewed(resourceName: string, reviewed: boolean): void {
+  try {
+    const raw = localStorage.getItem(STANDUP_REVIEW_KEY);
+    const parsed = raw ? JSON.parse(raw) as Record<string, string[]> : {};
+    const current = new Set(parsed[todayKey()] || []);
+    if (reviewed) current.add(resourceName); else current.delete(resourceName);
+    parsed[todayKey()] = Array.from(current);
+    localStorage.setItem(STANDUP_REVIEW_KEY, JSON.stringify(parsed));
+  } catch {
+    throw new Error('Unable to save standup review progress in this browser.');
+  }
+}
+export function resetStandupReviewState(): void {
+  setStandupReviewState([]);
+}
+function setStandupReviewState(names: string[]): void {
+  try {
+    const raw = localStorage.getItem(STANDUP_REVIEW_KEY);
+    const parsed = raw ? JSON.parse(raw) as Record<string, string[]> : {};
+    parsed[todayKey()] = names;
+    localStorage.setItem(STANDUP_REVIEW_KEY, JSON.stringify(parsed));
+  } catch { /* best-effort local UI state reset */ }
+}
