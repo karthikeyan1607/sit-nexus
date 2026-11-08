@@ -14,15 +14,15 @@ Execution target: five engineering days; external CAT approvals and infrastructu
 Exit: complete dependency map and approved technical contracts; no unsafe production behavior changed prematurely.
 
 ## Day 2 — Identity, authorization and persistence foundation
-- [ ] Add request-scoped authenticated principal abstraction.
-- [ ] Add fail-closed production authentication middleware; no client-selected manager identity.
-- [ ] Add role/region/project/action authorization middleware.
-- [ ] Introduce database repository interfaces and transaction boundary.
-- [ ] Implement the selected SQL adapter and versioned migrations once CAT's supported database is known.
-- [ ] Implement user-scoped settings, project configuration, resource master and audit repositories.
-- [ ] Add tests proving two users cannot change or read each other's settings outside grants.
+- [x] Add request-scoped authenticated principal abstraction (CAT SSO adapter contract; no client-supplied identity).
+- [x] Add fail-closed identity middleware on `/api/v1`; legacy routes remain staged and are not production-safe yet.
+- [x] Add role/region/project/action authorization policy helper and deny-by-default permission middleware.
+- [x] Introduce database-engine-independent repository interfaces and transaction boundary contract.
+- [ ] Implement the selected SQL adapter and versioned migrations once CAT's supported database is known (blocked: engine unknown).
+- [ ] Implement SQL-backed user-scoped settings, project configuration, resource master and audit repositories (interfaces defined; adapter pending).
+- [x] Add authorization policy tests for cross-region, cross-project and read/write isolation (execution still required in CI).
 
-Exit: no global active manager and no JSON-file runtime persistence.
+Exit: no global active manager and no JSON-file runtime persistence. **Not yet met:** legacy runtime still uses the JSON store/global manager; replacement is blocked on DB selection and staged route migration.
 
 ## Day 3 — Individual PAT and Azure DevOps-only data
 - [ ] Replace browser localStorage PAT storage and x-ado-pat forwarding.
