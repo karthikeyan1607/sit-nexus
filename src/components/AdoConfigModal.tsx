@@ -94,6 +94,7 @@ export const AdoConfigModal: React.FC<AdoConfigModalProps> = ({
           connected: true,
           organization: res.data.organization,
           project: res.data.project,
+          areaPath: CredentialService.getConnection()?.areaPath || currentFilter.areaPath || '',
           canRead: res.data.canRead,
           canWrite: res.data.canWrite,
           lastValidatedAt: new Date().toISOString(),
