@@ -59,6 +59,9 @@ export async function validateConnectionApi(data: { organization: string; projec
   return json;
 }
 export async function getAuthStatus(): Promise<{ activeManager: ManagerProfileDTO }> {
+  // Bootstrap the signed HttpOnly browser audit identity before parallel API calls begin.
+  const sessionResponse = await fetch(`${API_BASE}/audit/session`, { headers: getAuthHeaders() });
+  await handleResponse<{ success: boolean }>(sessionResponse);
   const connection = CredentialService.getConnection();
   const connected = Boolean(connection?.connected && CredentialService.hasPat());
   return { activeManager: {
