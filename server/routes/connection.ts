@@ -11,8 +11,8 @@ const router = Router();
  * 
  * CRITICAL SECURITY RULE:
  * - NEVER return the PAT in the response.
- * - NEVER store the PAT in PostgreSQL/database or .env.
- * - The browser temporarily holds the PAT in sessionStorage for the active session.
+ * - NEVER store the PAT in backend persistence or .env.
+ * - The requesting manager retains the PAT in browser localStorage per product requirements.
  */
 router.post('/validate', async (req: Request, res: Response) => {
   const { organization, project, pat } = req.body;
