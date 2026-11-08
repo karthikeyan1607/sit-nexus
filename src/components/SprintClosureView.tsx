@@ -38,7 +38,6 @@ import {
   ManagerProfileDTO,
   SprintClosurePreviewDTO
 } from '../utils/api';
-import { AVAILABLE_SPRINTS } from '../data/mockAdoData';
 import { normalize } from '../utils/normalize';
 import { AreaPathSelect } from './common/AreaPathSelect';
 import { IterationPathSelect } from './common/IterationPathSelect';
@@ -70,6 +69,8 @@ interface SprintClosureViewProps {
   initialIterationPath?: string;
   initialAreaPath?: string;
   initialRegion?: string;
+  availableAreaPaths?: string[];
+  availableIterationPaths?: string[];
   onClosureCompleted: () => void;
 }
 
@@ -79,17 +80,19 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
   initialIterationPath,
   initialAreaPath,
   initialRegion,
+  availableAreaPaths = [],
+  availableIterationPaths = [],
   onClosureCompleted,
 }) => {
   // Filters: Exact Iteration Path, Region, Area Path (NO Project filter - covers ALL PROJECTS)
   const [selectedSprint, setSelectedSprint] = useState(
-    initialIterationPath || 'Cat Digital\\2026\\Sprint 20 (Sep 30 - Oct 13)'
+    initialIterationPath || ''
   );
   const [selectedRegion, setSelectedRegion] = useState(
     initialRegion && initialRegion !== 'All' ? initialRegion : 'All Regions'
   );
   const [selectedAreaPath, setSelectedAreaPath] = useState(
-    initialAreaPath || activeManager.areaPath || 'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers'
+    initialAreaPath || activeManager.areaPath || ''
   );
 
   // Preview state
@@ -525,6 +528,7 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
                   label="Sprint / Iteration Path"
                   showLabel={true}
                   id="closure-sprint-select"
+                  additionalOptions={availableIterationPaths}
                 />
               </div>
 
