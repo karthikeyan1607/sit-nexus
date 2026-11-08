@@ -157,46 +157,6 @@ export async function getAuthStatus(): Promise<{ activeManager: ManagerProfileDT
   return handleResponse(res);
 }
 
-export async function getManagers(): Promise<{ managers: ManagerProfileDTO[]; activeManagerId: string }> {
-  const res = await fetch(`${API_BASE}/auth/managers`);
-  return handleResponse(res);
-}
-
-export async function switchManager(managerId: string): Promise<{ activeManager: ManagerProfileDTO; message: string }> {
-  const res = await fetch(`${API_BASE}/auth/managers/switch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ managerId }),
-  });
-  return handleResponse(res);
-}
-
-export async function createManager(data: { name: string; region: string; organization?: string; project?: string }) {
-  const res = await fetch(`${API_BASE}/auth/managers`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return handleResponse(res);
-}
-
-export async function connectAzureDevOps(data: {
-  organization: string;
-  project: string;
-  areaPath?: string;
-  pat: string;
-  managerId?: string;
-  managerName?: string;
-  region?: string;
-}): Promise<{ success: boolean; message: string; manager: ManagerProfileDTO }> {
-  const res = await fetch(`${API_BASE}/auth/connect`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return handleResponse(res);
-}
-
 export async function disconnectAzureDevOps(): Promise<{ success: boolean; message: string }> {
   CredentialService.disconnect();
   return { success: true, message: 'Azure DevOps connection removed from session.' };
