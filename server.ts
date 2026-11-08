@@ -6,7 +6,7 @@ import authRoutes from './server/routes/auth';
 import connectionRoutes from './server/routes/connection';
 import resourceRoutes from './server/routes/resources';
 import projectRoutes from './server/routes/projects';
-import queryRoutes from './server/routes/query';
+import queryRoutes, { handleGetSprints } from './server/routes/query';
 import { db } from './server/db';
 import { createCorporateRoutes } from './server/corporate/routes';
 
@@ -46,10 +46,9 @@ app.use('/api/resources', resourceRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/query', queryRoutes);
 
-// Direct Specification Endpoints (Section 17: /api/sprints, /api/area-paths, /api/audit, /api/sprint-close)
-app.use('/api/sprints', (req: Request, res: Response) => {
-  res.json({ success: true, sprints: db.getAvailableSprints() });
-});
+// Direct specification endpoints. Iterations are fetched from Azure DevOps only;
+// failures remain explicit and never fall back to the JSON store.
+app.get('/api/sprints', handleGetSprints);
 
 app.use('/api/area-paths', (req: Request, res: Response) => {
   res.json({ success: true, areaPaths: db.getAvailableAreaPaths() });
