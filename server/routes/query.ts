@@ -316,10 +316,10 @@ router.post(['/sprint-close/preview', '/preview'], async (req: Request, res: Res
   const activeManager = db.getActiveManager();
   const resourceMaster = db.getResources() || [];
 
-  const org = String(activeManager.organization || 'cat-digital').trim();
-  const proj = String(activeManager.project || 'Cat Digital').trim();
-  const targetArea = String(areaPath || activeManager.areaPath || 'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers').trim();
-  const targetIteration = String(iterationPath || sprint || 'Cat Digital\\2026\\Sprint 20 (Sep 30 - Oct 13)').trim();
+  const org = String(activeManager.organization || '').trim();
+  const proj = String(activeManager.project || '').trim();
+  const targetArea = String(areaPath || activeManager.areaPath || '').trim();
+  const targetIteration = String(iterationPath || sprint || '').trim();
   const targetRegion = String(region || 'All').trim();
 
   // Extract live PAT from header
@@ -390,10 +390,10 @@ router.post(['/sprint-close/execute', '/execute'], async (req: Request, res: Res
     });
   }
 
-  const org = String(activeManager.organization || 'cat-digital').trim();
-  const proj = String(activeManager.project || 'Cat Digital').trim();
-  const targetArea = String(areaPath || activeManager.areaPath || 'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers').trim();
-  const targetIteration = String(iterationPath || sprint || 'Cat Digital\\2026\\Sprint 20 (Sep 30 - Oct 13)').trim();
+  const org = String(activeManager.organization || '').trim();
+  const proj = String(activeManager.project || '').trim();
+  const targetArea = String(areaPath || activeManager.areaPath || '').trim();
+  const targetIteration = String(iterationPath || sprint || '').trim();
   const targetRegion = String(region || 'All').trim();
 
   const pat = (req.headers['x-ado-pat'] as string) || (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
@@ -411,7 +411,7 @@ router.post(['/sprint-close/execute', '/execute'], async (req: Request, res: Res
         managerId: activeManager.id,
       },
       resourceMaster,
-      pat ? pat.trim() : undefined
+      pat.trim()
     );
 
     return res.json(result);
