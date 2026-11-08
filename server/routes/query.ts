@@ -481,6 +481,15 @@ router.post(['/sprint-close/execute', '/execute'], async (req: Request, res: Res
   const targetIteration = String(iterationPath || sprint || '').trim();
   const targetRegion = String(region || 'All').trim();
 
+  try {
+    db.assertWritable();
+  } catch {
+    return res.status(503).json({
+      success: false,
+      error: { code: 'AUDIT_STORAGE_UNAVAILABLE', message: 'Sprint Closure is unavailable because persistent audit storage cannot be written. No Azure DevOps updates were attempted.' },
+    });
+  }
+
   const pat = (req.headers['x-ado-pat'] as string) || (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
 
   try {
