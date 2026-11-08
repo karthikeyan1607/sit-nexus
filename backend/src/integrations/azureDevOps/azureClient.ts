@@ -88,14 +88,6 @@ export class AzureClient {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        let errorDetail = `Azure DevOps HTTP ${response.status}`;
-        try {
-          const errJson = await response.json();
-          errorDetail = errJson.message || errJson.error || errorDetail;
-        } catch {
-          // ignore non-json error responses
-        }
-
         if (response.status === 401) {
           throw {
             code: 'AZURE_AUTH_FAILED',
@@ -107,7 +99,7 @@ export class AzureClient {
         if (response.status === 403) {
           throw {
             code: 'AZURE_PERMISSION_DENIED',
-            message: 'Azure DevOps permission denied. The PAT lacks required Work Items or Project scopes.',
+            message: 'Azure DevOps permission denied. The PAT lacks the required project or work-item scope.',
             statusCode: 403,
           };
         }
@@ -115,14 +107,16 @@ export class AzureClient {
         if (response.status === 404) {
           throw {
             code: 'AZURE_PROJECT_NOT_FOUND',
-            message: `Azure DevOps resource or project "${this.project}" not found under organization "${this.organization}".`,
+            message: 'The requested Azure DevOps project or resource was not found.',
             statusCode: 404,
           };
         }
 
+        // Do not return the upstream response body: it may contain internal
+        // diagnostics or identifiers that should remain in server-side logs.
         throw {
           code: 'AZURE_API_ERROR',
-          message: errorDetail,
+          message: `Azure DevOps request failed with HTTP ${response.status}.`,
           statusCode: response.status,
         };
       }
@@ -141,9 +135,9 @@ export class AzureClient {
         };
       }
       throw {
-        code: 'AZURE_API_ERROR',
-        message: err instanceof Error ? err.message : 'Unknown Azure DevOps error occurred.',
-        statusCode: 500,
+        code: 'AZURE_NETWORK_ERROR',
+        message: 'Unable to reach Azure DevOps. Check the approved corporate network and proxy path.',
+        statusCode: 503,
       };
     }
   }
