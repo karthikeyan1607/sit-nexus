@@ -8,11 +8,9 @@ const router = Router();
 // GET /api/auth/status - Get current active manager & connection status
 router.get('/status', (req: Request, res: Response) => {
   const activeManager = db.getActiveManager();
-  const dataSource = db.getDataSource();
 
   res.json({
     connected: true,
-    dataSource,
     organization: activeManager.organization || 'caterpillar',
     project: activeManager.project || 'CAT Digital',
     areaPath: activeManager.areaPath || 'CAT Digital',
@@ -25,24 +23,8 @@ router.get('/status', (req: Request, res: Response) => {
       organization: activeManager.organization || 'caterpillar',
       project: activeManager.project || 'CAT Digital',
       areaPath: activeManager.areaPath || 'CAT Digital',
-      isConnected: true,
-      dataSource,
+      isConnected: Boolean(activeManager.isConnected),
     }
-  });
-});
-
-// POST /api/auth/mode - Switch between MOCK MODE and REAL AZURE DEVOPS MODE
-router.post('/mode', (req: Request, res: Response) => {
-  const { mode } = req.body;
-  if (mode !== 'mock' && mode !== 'azure') {
-    return res.status(400).json({ error: 'Mode must be either "mock" or "azure".' });
-  }
-
-  db.setDataSource(mode);
-  res.json({
-    success: true,
-    message: `SIT Nexus switched to ${mode.toUpperCase()} MODE.`,
-    dataSource: mode,
   });
 });
 
