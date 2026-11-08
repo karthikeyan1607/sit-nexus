@@ -32,10 +32,10 @@ const getWorkspaceContext = () => {
     resourceMaster: getStoredResourceMaster() || [],
   };
 };
-function getAuthHeaders(): Record<string, string> {
+function getAuthHeaders(includePat = true): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const pat = CredentialService.getPat();
-  if (pat) headers['x-ado-pat'] = pat;
+  if (includePat && pat) headers['x-ado-pat'] = pat;
   return headers;
 }
 async function handleResponse<T>(res: Response): Promise<T> {
@@ -60,7 +60,7 @@ export async function validateConnectionApi(data: { organization: string; projec
 }
 export async function getAuthStatus(): Promise<{ activeManager: ManagerProfileDTO }> {
   // Bootstrap the signed HttpOnly browser audit identity before parallel API calls begin.
-  const sessionResponse = await fetch(`${API_BASE}/audit/session`, { headers: getAuthHeaders() });
+  const sessionResponse = await fetch(`${API_BASE}/audit/session`, { headers: getAuthHeaders(false) });
   await handleResponse<{ success: boolean }>(sessionResponse);
   const connection = CredentialService.getConnection();
   const connected = Boolean(connection?.connected && CredentialService.hasPat());
@@ -190,6 +190,6 @@ export async function getStoriesFilteredApi(params: Record<string, string>) {
   return handleResponse<{ success: boolean; totalCount: number; stories: WorkItemStory[] }>(res);
 }
 export async function getClosureHistoryApi() {
-  const res = await fetch(`${API_BASE}/query/sprint-close/history`, { headers: getAuthHeaders() });
+  const res = await fetch(`${API_BASE}/query/sprint-close/history`, { headers: getAuthHeaders(false) });
   return handleResponse<{ history: import('../types').SprintClosureAuditRecord[]; totalCount: number }>(res);
 }
