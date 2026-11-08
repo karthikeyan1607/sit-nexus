@@ -36,11 +36,13 @@ Exit: no global active manager and no JSON-file runtime persistence. **Not yet m
 - [x] Route `/api/sprints` through live Azure DevOps; missing PAT/config and upstream errors are explicit.
 - [x] Make sprint query live-only with PAT and explicit Area Path + Iteration Path; no mock branch or database story fallback.
 - [x] Make sprint closure preview/execution require PAT; remove mock preview data and local mock update fallback; deny update when permission is missing.
+- [x] Remove the legacy stored-story list endpoint as a data source (returns an explicit migration response instead of JSON/mock stories).
+- [x] Route status/story-point edits through Azure DevOps JSON Patch; unsupported SIT Nexus-only annotations return an explicit not-yet-migrated error rather than claiming a save.
 - [x] Sanitize Azure DevOps upstream error details before returning errors to clients.
 - [x] Add regression tests covering empty iteration response, upstream network failure, and live iteration mapping.
 - [ ] Run tests for invalid/revoked PAT, timeout, API permissions and per-user credential isolation (not yet covered end-to-end).
 
-Exit: **not met**. Several high-risk paths remain: browser PAT localStorage and `x-ado-pat` forwarding, global active manager/JSON store, mock data initialization and mock routes, non-live story reads/updates, and database-backed sprint-closure audit persistence.
+Exit: **not met**. Several high-risk paths remain: browser PAT localStorage and `x-ado-pat` forwarding, global active manager/JSON store, mock data initialization and mock routes, database-backed sprint-closure audit persistence, and server-side per-user PAT/session binding.
 
 ## Day 4 — Frontend/API migration while preserving UX
 - [ ] Add typed `/api/v1/me` and connection APIs.
