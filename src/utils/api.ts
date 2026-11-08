@@ -33,7 +33,7 @@ const getWorkspaceContext = () => {
   };
 };
 function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'x-sit-nexus-client-id': CredentialService.getClientId() };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const pat = CredentialService.getPat();
   if (pat) headers['x-ado-pat'] = pat;
   return headers;
