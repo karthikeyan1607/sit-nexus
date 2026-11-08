@@ -144,7 +144,7 @@ export default function App() {
     }, 3500);
   }, []);
 
-  // Initial load uses only server-provided master data and live Azure DevOps paths.
+  // Initial load restores this browser's workspace and retrieves live Azure DevOps paths.
   useEffect(() => {
     async function initPlatform() {
       try {
@@ -341,7 +341,7 @@ export default function App() {
 
       showToast(`Story #${storyId} status updated to ${newStatus}`);
     } catch (err) {
-      showToast('Failed to update status on server.');
+      showToast('Failed to update story status in Azure DevOps.');
     }
   };
 
@@ -379,7 +379,7 @@ export default function App() {
       showToast(`Saved updates for story #${updatedStory.id}`);
       handleRunQuery();
     } catch (err) {
-      showToast('Failed to save story updates.');
+      showToast('Failed to save Azure DevOps fields or browser-local story notes.');
     }
   };
 
@@ -392,11 +392,11 @@ export default function App() {
   };
 
   // ==========================================
-  // Resource Master Management via Backend API & LocalStorage Persistence
+  // Resource Master Management via browser-local persistence
   // ==========================================
   const handleReplaceResourceMaster = async (newResources: ResourceRecord[]) => {
     try {
-      // Resource Master is shared server data; never fall back to browser-only persistence.
+      // Resource Master is private to this browser; it is never uploaded as shared server data.
       await replaceResourcesApi(newResources);
       const data = await getResourcesApi();
       setResourceMaster(data.resources);
@@ -426,10 +426,7 @@ export default function App() {
       await deleteResourceApi(id);
       setResourceMaster((prev) => {
         const next = prev.filter((r) => r.id !== id);
-        if (next.length === 0) {
-          clearStoredResourceMaster();
-        } else {
-        }
+        if (next.length === 0) clearStoredResourceMaster();
         return next;
       });
       showToast('Resource deleted from Resource Master.');
