@@ -17,18 +17,20 @@ import { AreaPathSelect } from './common/AreaPathSelect';
 
 interface SettingsViewProps {
   activeManager: ManagerProfileDTO;
+  availableAreaPaths?: string[];
   onManagerUpdated: (mgr: ManagerProfileDTO) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   activeManager,
+  availableAreaPaths = [],
   onManagerUpdated,
 }) => {
   // Connection Form State
-  const [org, setOrg] = useState(activeManager.organization || 'caterpillar');
-  const [project, setProject] = useState(activeManager.project || 'CAT Digital');
+  const [org, setOrg] = useState(activeManager.organization || '');
+  const [project, setProject] = useState(activeManager.project || '');
   const [areaPath, setAreaPath] = useState(
-    activeManager.areaPath || 'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers'
+    activeManager.areaPath || ''
   );
   const [patInput, setPatInput] = useState('');
   const [isReplacingPat, setIsReplacingPat] = useState(false);
@@ -36,7 +38,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Connection State derived from active session / CredentialService
   const hasSessionPat = CredentialService.hasPat();
   const isConnected = activeManager.isConnected || hasSessionPat;
-  const maskedPat = CredentialService.getMaskedPat() || (isConnected ? '••••••••9918' : null);
+  const maskedPat = CredentialService.getMaskedPat();
 
   // Validation state
   const [isValidating, setIsValidating] = useState(false);
@@ -227,6 +229,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               label="Default Area Path"
               showLabel={true}
               id="settings-area-path-select"
+              additionalOptions={availableAreaPaths}
             />
           </div>
         </div>
