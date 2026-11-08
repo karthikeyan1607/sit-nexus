@@ -78,7 +78,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       });
 
       if (res.success && res.data.connected) {
-        // Stored exclusively in browser sessionStorage
+        // Stored in this manager's browser localStorage
         CredentialService.setPat(tokenToValidate);
         CredentialService.setConnection({
           connected: true,
