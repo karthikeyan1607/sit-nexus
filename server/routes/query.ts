@@ -5,7 +5,7 @@ import { StateTransitionService } from '../services/stateTransition';
 import { IdentityMatcher, NormalizedResourceIdentity } from '../services/identityMatcher';
 import { normalize, parseTags, matchesProjectTag } from '../services/normalize';
 
-import { AzureClient, IterationService } from '../../backend/src/integrations/azureDevOps';
+import { AzureClient, IterationService, WorkItemService } from '../../backend/src/integrations/azureDevOps';
 
 const router = Router();
 
@@ -217,67 +217,118 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/query/stories - Retrieve all stories with optional filtering (Section 15)
-router.get('/stories', (req: Request, res: Response) => {
-  const { region, sprint, project, resource, state, search } = req.query;
-  let filtered = db.getStories() || [];
-
-  if (region && normalize(region) !== 'all') {
-    filtered = filtered.filter((s) => normalize(s?.region) === normalize(region));
-  }
-  if (sprint && normalize(sprint) !== 'all') {
-    filtered = filtered.filter((s) => normalize(s?.sprint) === normalize(sprint));
-  }
-  if (project && normalize(project) !== 'all' && normalize(project) !== 'all projects') {
-    filtered = filtered.filter((s) => matchesProjectTag(s?.tags || s?.tag, s?.project, project));
-  }
-  if (resource) {
-    const rQuery = normalize(resource);
-    filtered = filtered.filter((s) => normalize(s?.assignedTo).includes(rQuery));
-  }
-  if (state && normalize(state) !== 'all') {
-    filtered = filtered.filter((s) => normalize(s?.status) === normalize(state));
-  }
-  if (search) {
-    const q = normalize(search);
-    filtered = filtered.filter((s) => 
-      normalize(s?.id).includes(q) ||
-      normalize(s?.title).includes(q) ||
-      normalize(s?.assignedTo).includes(q) ||
-      normalize(s?.tag).includes(q) ||
-      normalize(s?.project).includes(q)
-    );
-  }
-
-  res.json({
-    success: true,
-    totalCount: filtered.length,
-    stories: filtered,
+// Legacy story snapshot endpoint intentionally returns Gone. Work-item details
+// must be obtained through a live, scoped Azure DevOps query; stale JSON records
+// are never presented as current work items.
+router.get('/stories', (_req: Request, res: Response) => {
+  return res.status(410).json({
+    success: false,
+    error: {
+      code: 'LIVE_QUERY_REQUIRED',
+      message: 'Stored story snapshots are disabled. Run a live Azure DevOps sprint query instead.',
+    },
   });
 });
 
-// PATCH /api/query/stories/:id - Update story status, points, notes
-router.patch('/stories/:id', (req: Request, res: Response) => {
+// PATCH /api/query/stories/:id - Update supported work-item fields in Azure DevOps.
+router.patch('/stories/:id', async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  const { status, storyPoints, standupNotes, blockedReason, isReviewedToday } = req.body;
-
-  const updated = db.updateStory(id, {
-    ...(status ? { status } : {}),
-    ...(storyPoints !== undefined ? { storyPoints: Number(storyPoints) } : {}),
-    ...(standupNotes !== undefined ? { standupNotes } : {}),
-    ...(blockedReason !== undefined ? { blockedReason } : {}),
-    ...(isReviewedToday !== undefined ? { isReviewedToday } : {}),
-  });
-
-  if (!updated) {
-    return res.status(404).json({ error: `Story #${id} not found.` });
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_WORK_ITEM_ID', message: 'A valid Azure DevOps work-item ID is required.' },
+    });
   }
 
-  res.json({
-    success: true,
-    message: `Story #${id} updated in Azure DevOps backlog.`,
-    story: updated,
-  });
+  const { status, storyPoints, standupNotes, blockedReason, isReviewedToday } = req.body ?? {};
+  const unsupportedAnnotations = [
+    ...(standupNotes !== undefined ? ['standupNotes'] : []),
+    ...(blockedReason !== undefined ? ['blockedReason'] : []),
+    ...(isReviewedToday !== undefined ? ['isReviewedToday'] : []),
+  ];
+  if (unsupportedAnnotations.length > 0) {
+    return res.status(501).json({
+      success: false,
+      error: {
+        code: 'STORY_ANNOTATIONS_NOT_MIGRATED',
+        message: `These SIT Nexus-only fields are not yet backed by approved persistence: ${unsupportedAnnotations.join(', ')}. No changes were sent to Azure DevOps.`,
+      },
+    });
+  }
+
+  const fields: { 'System.State'?: string; 'Microsoft.VSTS.Scheduling.StoryPoints'?: number } = {};
+  const allowedStates = new Set(['New', 'Active', 'Internal Review', 'Resolved', 'Closed', 'Blocked']);
+  if (status !== undefined) {
+    if (typeof status !== 'string' || !allowedStates.has(status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_WORK_ITEM_STATE', message: 'The requested work-item state is not supported.' },
+      });
+    }
+    fields['System.State'] = status;
+  }
+  if (storyPoints !== undefined) {
+    const points = Number(storyPoints);
+    if (!Number.isFinite(points) || points < 0 || points > 100) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_STORY_POINTS', message: 'Story points must be a number between 0 and 100.' },
+      });
+    }
+    fields['Microsoft.VSTS.Scheduling.StoryPoints'] = points;
+  }
+  if (Object.keys(fields).length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'NO_SUPPORTED_FIELDS', message: 'Provide a supported Azure DevOps field to update.' },
+    });
+  }
+
+  const activeManager = db.getActiveManager();
+  const organization = String(activeManager.organization || '').trim();
+  const project = String(activeManager.project || '').trim();
+  const pat = (req.headers['x-ado-pat'] as string) ||
+    (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\\s+/i, '') : '');
+
+  if (!pat.trim()) {
+    return res.status(401).json({
+      success: false,
+      error: { code: 'AZURE_DEVOPS_NOT_CONNECTED', message: 'Connect Azure DevOps before updating a work item.' },
+    });
+  }
+  if (!organization || !project) {
+    return res.status(409).json({
+      success: false,
+      error: { code: 'AZURE_DEVOPS_CONFIGURATION_MISSING', message: 'Azure DevOps organization and project must be configured.' },
+    });
+  }
+
+  try {
+    const client = new AzureClient(organization, project);
+    const workItems = new WorkItemService(client);
+    const updated = await workItems.updateWorkItemFields(id, fields, pat.trim());
+    return res.json({
+      success: true,
+      message: `Azure DevOps work item #${id} updated successfully.`,
+      story: {
+        id: updated.id,
+        title: updated.fields['System.Title'],
+        status: updated.fields['System.State'],
+        storyPoints: updated.fields['Microsoft.VSTS.Scheduling.StoryPoints'] ?? 0,
+        lastUpdatedDate: updated.fields['System.ChangedDate'],
+      },
+    });
+  } catch (err: unknown) {
+    const failure = err as { statusCode?: number; code?: string; message?: string };
+    const statusCode = failure?.statusCode || 502;
+    return res.status(statusCode).json({
+      success: false,
+      error: {
+        code: failure?.code || 'AZURE_WORK_ITEM_UPDATE_FAILED',
+        message: failure?.message || 'Azure DevOps work-item update failed. No local mock update was applied.',
+      },
+    });
+  }
 });
 
 // -------------------------------------------------------------
