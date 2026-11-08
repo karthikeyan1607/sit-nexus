@@ -67,11 +67,67 @@ export async function handleGetSprints(req: Request, res: Response) {
 router.get('/sprints', handleGetSprints);
 
 
-// GET /api/query/area-paths (or /api/area-paths) - Retrieve configurable Area Paths
-router.get('/area-paths', (req: Request, res: Response) => {
-  const areaPaths = db.getAvailableAreaPaths();
-  res.json({ success: true, areaPaths });
-});
+interface AzureClassificationNode {
+  id: number;
+  name: string;
+  path: string;
+  hasChildren?: boolean;
+  children?: AzureClassificationNode[];
+}
+
+/** Retrieve the configured Area Path tree from the live Azure DevOps project. */
+export async function handleGetAreaPaths(req: Request, res: Response) {
+  const activeManager = db.getActiveManager();
+  const organization = String(activeManager.organization || '').trim();
+  const project = String(activeManager.project || '').trim();
+  const pat = (req.headers['x-ado-pat'] as string) ||
+    (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\\s+/i, '') : '');
+
+  if (!pat.trim()) {
+    return res.status(401).json({
+      success: false,
+      error: { code: 'AZURE_DEVOPS_NOT_CONNECTED', message: 'Connect Azure DevOps before loading Area Paths.' },
+    });
+  }
+  if (!organization || !project) {
+    return res.status(409).json({
+      success: false,
+      error: { code: 'AZURE_DEVOPS_CONFIGURATION_MISSING', message: 'Azure DevOps organization and project must be configured.' },
+    });
+  }
+
+  try {
+    const client = new AzureClient(organization, project);
+    const root = await client.request<AzureClassificationNode>(
+      '_apis/wit/classificationnodes/Areas?$depth=10',
+      pat.trim(),
+      { method: 'GET' },
+    );
+
+    const areaPaths: string[] = [];
+    const visit = (node: AzureClassificationNode) => {
+      if (node.path && !areaPaths.includes(node.path)) areaPaths.push(node.path);
+      for (const child of node.children || []) visit(child);
+    };
+    visit(root);
+
+    return res.json({ success: true, source: 'ado-live', areaPaths });
+  } catch (err: unknown) {
+    const failure = err as { statusCode?: number; code?: string };
+    const statusCode = failure?.statusCode === 504 ? 504 : 502;
+    return res.status(statusCode).json({
+      success: false,
+      error: {
+        code: failure?.code || 'AZURE_AREA_PATH_LOOKUP_FAILED',
+        message: statusCode === 504
+          ? 'Azure DevOps Area Path lookup timed out.'
+          : 'Unable to retrieve Area Paths from Azure DevOps. No fallback list was returned.',
+      },
+    });
+  }
+}
+
+router.get('/area-paths', handleGetAreaPaths);
 
 // POST /api/query - Execute Azure DevOps sprint query
 router.post('/', async (req: Request, res: Response) => {
