@@ -31,6 +31,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Signed HttpOnly browser-profile identity partitions each manager's closure audit history.
+app.use('/api', createBrowserAuditIdentity(auditSessionSecret, isProduction));
+app.get('/api/audit/session', (_req: Request, res: Response) => res.json({ success: true }));
+
 // Connection validation is stateless. Resource Master and project settings remain browser-local.
 app.use('/api/connection', connectionRoutes);
 app.use('/api/query', queryRoutes);
