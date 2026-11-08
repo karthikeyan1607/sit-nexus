@@ -116,7 +116,6 @@ export default function App() {
   });
 
   // Data Source mode (Section 46: MOCK MODE vs REAL AZURE DEVOPS MODE)
-  const [dataSource, setDataSource] = useState<'mock' | 'azure'>('azure');
   const [availableAreaPaths, setAvailableAreaPaths] = useState<string[]>([
     'CAT Digital',
     'SIT',
@@ -176,9 +175,6 @@ export default function App() {
         const authData = await getAuthStatus().catch(() => null);
         if (authData?.activeManager) {
           setActiveManager(authData.activeManager);
-        }
-        if (authData && 'dataSource' in authData) {
-          setDataSource((authData as { dataSource: 'mock' | 'azure' }).dataSource);
         }
 
         // Fetch Area Paths (Section 17)
@@ -607,7 +603,6 @@ export default function App() {
           activeTab={activeTab}
           currentSprint={filter.sprint}
           activeManager={activeManager}
-          dataSource={dataSource}
           onOpenSettings={() => setActiveTab('settings')}
           onTriggerEasterEgg={() => setIsEasterEggOpen(true)}
           isSidebarCollapsed={isSidebarCollapsed}
