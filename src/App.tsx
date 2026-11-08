@@ -14,7 +14,6 @@ import {
   addResourceApi, 
   updateResourceApi, 
   deleteResourceApi, 
-  resetResourcesApi,
   getProjectsApi,
   addProjectApi,
   toggleHideProjectApi,
@@ -28,10 +27,7 @@ import {
 } from './utils/api';
 
 import { exportStoriesToCsv } from './utils/storage';
-import { INITIAL_RESOURCES } from './data/mockAdoData';
 import { 
-  getStoredResourceMaster, 
-  saveStoredResourceMaster, 
   clearStoredResourceMaster, 
   getDynamicRegions 
 } from './utils/resourceMaster';
@@ -50,6 +46,7 @@ import { Footer } from './components/Footer';
 import { EasterEggModal } from './components/EasterEggModal';
 import { CheckCircle2 } from 'lucide-react';
 import { normalize } from './utils/normalize';
+import { CredentialService } from './services/credentialService';
 
 export default function App() {
   // Navigation tab
@@ -70,59 +67,33 @@ export default function App() {
   // Subtle Easter Egg Modal state
   const [isEasterEggOpen, setIsEasterEggOpen] = useState(false);
 
-  // Active Manager & ADO Connection state
+  // No synthetic manager identity, resource master, project tags or sprint defaults.
   const [activeManager, setActiveManager] = useState<ManagerProfileDTO>({
-    id: 'mgr-1',
-    name: 'Karthikeyan',
-    region: 'All',
-    organization: 'cat-digital',
-    project: 'Cat Digital',
-    areaPath: 'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers',
-    maskedPat: '••••••••••••••••••••••••9918',
-    isConnected: true,
-    lastValidatedAt: new Date().toISOString(),
+    id: '',
+    name: '',
+    region: '',
+    organization: '',
+    project: '',
+    areaPath: '',
+    isConnected: false,
+    lastValidatedAt: null,
   });
+  const [resourceMaster, setResourceMaster] = useState<ResourceRecord[]>([]);
+  const [dynamicRegions, setDynamicRegions] = useState<{ region: string; count: number }[]>([]);
+  const [projectConfigs, setProjectConfigs] = useState<ProjectTagConfig[]>([]);
 
-  // Resource Master State (Restored from browser localStorage key 'sit_nexus_resource_master')
-  const [resourceMaster, setResourceMaster] = useState<ResourceRecord[]>(() => {
-    const stored = typeof window !== 'undefined' ? getStoredResourceMaster() : null;
-    return stored && stored.length > 0 ? stored : INITIAL_RESOURCES;
-  });
-  const [dynamicRegions, setDynamicRegions] = useState<{ region: string; count: number }[]>(() => {
-    const stored = typeof window !== 'undefined' ? getStoredResourceMaster() : null;
-    const base = stored && stored.length > 0 ? stored : INITIAL_RESOURCES;
-    return getDynamicRegions(base);
-  });
-
-  // Project Tags state
-  const [projectConfigs, setProjectConfigs] = useState<ProjectTagConfig[]>([
-    { name: 'Admin Tool', discoveredFromAdo: true, isHidden: false },
-    { name: 'DLMA', discoveredFromAdo: true, isHidden: false },
-    { name: 'One Site', discoveredFromAdo: true, isHidden: false },
-    { name: 'Warranty', discoveredFromAdo: true, isHidden: false },
-    { name: 'Customer', discoveredFromAdo: true, isHidden: false },
-    { name: 'Access Management', discoveredFromAdo: true, isHidden: false },
-  ]);
-
-  // Filter state
+  // Filters are populated only after real Azure DevOps paths are retrieved.
   const [filter, setFilter] = useState<FilterState>({
     region: 'All',
     project: 'All Projects',
-    sprint: 'Sprint 20 (Sep 30 - Oct 13)',
-    iterationPath: 'Cat Digital\\2026\\Sprint 20 (Sep 30 - Oct 13)',
-    areaPath: 'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers',
+    sprint: '',
+    iterationPath: '',
+    areaPath: '',
     searchQuery: '',
     statusFilter: 'All',
   });
 
-  // Data Source mode (Section 46: MOCK MODE vs REAL AZURE DEVOPS MODE)
-  const [availableAreaPaths, setAvailableAreaPaths] = useState<string[]>([
-    'CAT Digital',
-    'SIT',
-    'SIT\\India',
-    'SIT\\Europe',
-    'SIT\\USA',
-  ]);
+  const [availableAreaPaths, setAvailableAreaPaths] = useState<string[]>([]);
   const [availableIterationPaths, setAvailableIterationPaths] = useState<string[]>([]);
   const [queryWarnings, setQueryWarnings] = useState<string[]>([]);
 
@@ -148,9 +119,9 @@ export default function App() {
     durationMs: number;
     count: number;
   }>({
-    lastExecutedTime: '10:00 AM EST',
-    durationMs: 142,
-    count: 14,
+    lastExecutedTime: null,
+    durationMs: 0,
+    count: 0,
   });
 
   // Modals state
@@ -167,67 +138,68 @@ export default function App() {
     }, 3500);
   }, []);
 
-  // 1. Initial Load: Fetch manager connection, resources, projects, and initial query from Backend
+  // Initial load uses only server-provided master data and live Azure DevOps paths.
   useEffect(() => {
     async function initPlatform() {
       try {
-        // Fetch Auth Status
         const authData = await getAuthStatus().catch(() => null);
         if (authData?.activeManager) {
           setActiveManager(authData.activeManager);
         }
 
-        // Fetch Area Paths (Section 17)
-        const areaData = await getAreaPathsApi().catch(() => null);
-        if (areaData?.areaPaths && areaData.areaPaths.length > 0) {
-          setAvailableAreaPaths(areaData.areaPaths);
+        // Remove stale browser copies; the authenticated backend is authoritative.
+        clearStoredResourceMaster();
+
+        const [areaData, sprintData, resourceData, projectData] = await Promise.all([
+          getAreaPathsApi().catch(() => null),
+          getSprintsApi().catch(() => null),
+          getResourcesApi().catch(() => null),
+          getProjectsApi().catch(() => null),
+        ]);
+
+        const areaPaths = areaData?.areaPaths || [];
+        const iterations = sprintData?.sprints || [];
+        setAvailableAreaPaths(areaPaths);
+        setAvailableIterationPaths(iterations.map((item) => item.path).filter(Boolean));
+
+        if (resourceData?.resources) {
+          setResourceMaster(resourceData.resources);
+          setDynamicRegions(resourceData.dynamicRegions || getDynamicRegions(resourceData.resources));
+        }
+        if (projectData?.projects) {
+          setProjectConfigs(projectData.projects);
         }
 
-        // Fetch Sprint Iteration Paths (live ADO or verified standardized)
-        const sprintData = await getSprintsApi().catch(() => null);
-        if (sprintData?.sprints && sprintData.sprints.length > 0) {
-          setAvailableIterationPaths(sprintData.sprints.map((s) => s.path).filter(Boolean));
+        const managerArea = authData?.activeManager?.areaPath || '';
+        const initialArea = managerArea && areaPaths.includes(managerArea)
+          ? managerArea
+          : (areaPaths[0] || '');
+        const currentIteration = iterations.find((item) => item.isCurrent)?.path || iterations[0]?.path || '';
+
+        setFilter((previous) => ({
+          ...previous,
+          areaPath: initialArea,
+          iterationPath: currentIteration,
+          sprint: currentIteration,
+        }));
+
+        // Do not issue a fabricated/default query. Query only when the user has
+        // a real PAT and both scopes came back from Azure DevOps.
+        if (CredentialService.hasPat() && initialArea && currentIteration) {
+          await runBackendQuery({
+            region: 'All',
+            project: 'All Projects',
+            sprint: currentIteration,
+            iterationPath: currentIteration,
+            areaPath: initialArea,
+          });
         }
-
-
-        // Check localStorage for sit_nexus_resource_master first (Requirement 5)
-        const storedRes = getStoredResourceMaster();
-        if (storedRes && storedRes.length > 0) {
-          setResourceMaster(storedRes);
-          setDynamicRegions(getDynamicRegions(storedRes));
-          // Synchronize stored Resource Master with backend query engine
-          replaceResourcesApi(storedRes).catch(() => {});
-        } else {
-          // If no stored Resource Master exists in localStorage, fetch initial backend resources
-          const resData = await getResourcesApi().catch(() => null);
-          if (resData?.resources) {
-            setResourceMaster(resData.resources);
-            if (resData.dynamicRegions) {
-              setDynamicRegions(resData.dynamicRegions);
-            }
-          }
-        }
-
-        // Fetch Projects
-        const projData = await getProjectsApi().catch(() => null);
-        if (projData?.projects) {
-          setProjectConfigs(projData.projects);
-        }
-
-        // Run Initial Query
-        await runBackendQuery({
-          region: 'All',
-          project: 'All Projects',
-          sprint: 'Sprint 20 (Sep 30 - Oct 13)',
-          iterationPath: 'Cat Digital\\2026\\Sprint 20 (Sep 30 - Oct 13)',
-          areaPath: 'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers',
-        });
       } catch (err) {
         console.error('Initial load error:', err);
       }
     }
 
-    initPlatform();
+    void initPlatform();
   }, []);
 
   // Visible projects in filter (excluding hidden)
@@ -420,7 +392,6 @@ export default function App() {
       await updateResourceApi(updated.id, updated);
       setResourceMaster((prev) => {
         const next = prev.map((r) => (r.id === updated.id ? updated : r));
-        saveStoredResourceMaster(next);
         return next;
       });
       showToast(`Updated resource "${updated.name}"`);
@@ -437,7 +408,6 @@ export default function App() {
         if (next.length === 0) {
           clearStoredResourceMaster();
         } else {
-          saveStoredResourceMaster(next);
         }
         return next;
       });
@@ -453,8 +423,7 @@ export default function App() {
       const res = await addResourceApi(newRes);
       setResourceMaster((prev) => {
         const next = [res.resource, ...prev];
-        saveStoredResourceMaster(next);
-        return next;
+          return next;
       });
       showToast(`Resource "${res.resource.name}" added to ${res.resource.region} team.`);
     } catch (err) {
@@ -463,22 +432,15 @@ export default function App() {
   };
 
   const handleResetResourceMaster = async () => {
-    if (!confirm('Clear uploaded Resource Master and reset to default?')) return;
+    if (!confirm('Clear the Resource Master? This removes the current shared master list.')) return;
     try {
-      // Clear from browser localStorage (Requirement 16)
       clearStoredResourceMaster();
-
-      await resetResourcesApi();
-      const data = await getResourcesApi();
-      setResourceMaster(data.resources);
-      setDynamicRegions(data.dynamicRegions);
-      showToast('Cleared uploaded Resource Master from local storage.');
-      handleRunQuery();
+      await replaceResourcesApi([]);
+      setResourceMaster([]);
+      setDynamicRegions([]);
+      showToast('Resource Master cleared.');
     } catch (err) {
-      clearStoredResourceMaster();
-      setResourceMaster(INITIAL_RESOURCES);
-      setDynamicRegions(getDynamicRegions(INITIAL_RESOURCES));
-      showToast('Cleared Resource Master.');
+      showToast('Failed to clear Resource Master on the server.');
     }
   };
 
@@ -677,6 +639,8 @@ export default function App() {
                 initialIterationPath={filter.iterationPath}
                 initialAreaPath={filter.areaPath}
                 initialRegion={filter.region === 'All' ? 'All Regions' : filter.region}
+                availableAreaPaths={availableAreaPaths}
+                availableIterationPaths={availableIterationPaths}
                 onClosureCompleted={handleRunQuery}
               />
             )}
@@ -685,6 +649,7 @@ export default function App() {
             {activeTab === 'settings' && (
               <SettingsView
                 activeManager={activeManager}
+                availableAreaPaths={availableAreaPaths}
                 onManagerUpdated={(mgr) => {
                   setActiveManager(mgr);
                   showToast(`Active manager switched to ${mgr.name}`);
