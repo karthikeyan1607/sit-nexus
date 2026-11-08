@@ -11,7 +11,7 @@ const router = Router();
 
 // GET /api/query/sprints (or /api/sprints) - Retrieve available iteration paths (live ADO or verified standardized)
 export async function handleGetSprints(req: Request, res: Response) {
-  const pat = (req.headers['x-ado-pat'] as string) || (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\\s+/i, '') : '');
+  const pat = (req.headers['x-ado-pat'] as string) || (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
   if (!pat?.trim()) {
     return res.status(401).json({
       success: false,
