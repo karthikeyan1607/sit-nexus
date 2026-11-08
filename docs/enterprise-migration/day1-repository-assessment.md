@@ -1,86 +1,76 @@
-# SIT Nexus Corporate Migration — Day 1 Repository Assessment
+# SIT Nexus Corporate Migration — Repository Assessment
 
 Date: 2026-11-08
 Working branch: migration/corporate-onprem-day1
-Target: CAT-managed on-premises deployment; internal and approved remote access; individual Azure DevOps PATs; all-region coordinated rollout.
-Constraints: preserve current UI and workflows; production must never use mock or fabricated data.
+Target: CAT-hosted application accessible only through CAT-approved network paths and VDI.
+Constraint: preserve the current UI and business workflows; production must use live Azure DevOps data only.
 
-## Executive assessment
+## Product architecture decisions confirmed with the product owner
 
-The repository is a React 19 + Vite + TypeScript frontend with an Express/TypeScript server and Azure DevOps integration. It is not yet safe to convert directly into a multi-manager corporate deployment. The highest-risk areas are global manager state, JSON-file persistence, browser-side PAT storage, mock data seeding, and silent fallback behavior.
+1. SIT Nexus is one centrally hosted application.
+2. Each manager has an independent browser workspace.
+3. Resource Master, project/tag visibility, query preferences, standup review progress and SIT Nexus-only story annotations remain in that manager's browser storage.
+4. Each manager enters and maintains their own Azure DevOps PAT in browser localStorage. The backend validates and uses the PAT per request but does not persist it.
+5. Azure DevOps is the source of truth for work items, assignments, workflow state, story points, iterations, Area Paths and tags.
+6. Sprint Closure audit history is persistent on the server but partitioned by a signed HttpOnly browser-profile cookie. Another browser/profile or computer receives a different audit namespace.
+7. No shared Resource Master, project settings or global active-manager state.
+8. CAT SSO and SQL are not implementation requirements for the current model. CAT network/VDI restrictions must be provided by hosting infrastructure.
+9. Audit history is not intended to be accessed from another computer/browser profile.
+10. Existing UI and all seven modules must be preserved.
 
-This branch is an assessment/migration branch. No production branch changes have been made.
+## Current implementation findings
 
-## Confirmed findings
+### Runtime
+- React 19 + Vite + TypeScript frontend.
+- Express + TypeScript backend.
+- Azure DevOps REST API integration.
+- Migration branch includes a GitHub Actions workflow for tests, typecheck and Vite build.
 
-### 1. Runtime and project layout
-- `package.json` identifies React 19, Vite, Express 4 and TypeScript.
-- `server.ts` mounts Express routes for auth, connection, resources, projects and query, and serves the Vite build in production.
-- The current test command is `tsx tests/sitNexus.test.ts`.
-- The current tests import `MockAzureService` and assert mock-derived stories, resource baselines and iterations. The test suite must be replaced with live-contract/unit tests and isolated fixtures that cannot be served in production.
+### Browser-local manager workspace
+- sit_nexus_ado_pat: individual PAT.
+- sit_nexus_ado_conn: connection metadata.
+- sit_nexus_resource_master: Resource Master.
+- sit_nexus_project_tags_v1: project/tag visibility.
+- sit_nexus_story_annotations_v1: standup notes and blocked reasons.
+- sit_nexus_standup_review_v1: daily review progress.
+- A browser-local opaque ID is used for local UI profile metadata; the server audit namespace is issued separately as a signed HttpOnly cookie.
 
-### 2. Persistence and identity
-- `server/db.ts` uses `.sit_nexus_db.json` and Node filesystem read/write operations.
-- The database model contains one global `activeManagerId`, shared manager/resource/project/story/audit collections and a `dataSource` mode.
-- Initial database creation seeds a default manager, resource master, project tags and stories from `src/data/mockAdoData`.
-- Existing manager endpoints create profiles and switch the global active manager. They do not verify the caller's corporate identity.
-- This global mutable identity is unsafe for concurrent managers and must be removed before multi-user rollout.
+### Server persistence
+- server/db.ts now contains audit-only JSON persistence; it no longer stores a shared active manager, Resource Master, projects or stories.
+- SIT_NEXUS_AUDIT_FILE must point to a CAT-managed persistent volume in production.
+- Audit records are partitioned by a signed HttpOnly browser-profile cookie.
+- SIT_NEXUS_AUDIT_SESSION_SECRET must be stable across restarts and contain at least 32 bytes.
+- The current JSON audit store assumes a single application instance. Multiple instances require shared transactional persistence.
 
-### 3. PAT handling
-- `src/services/credentialService.ts` persists PATs in browser `localStorage` and migrates from `sessionStorage`.
-- `server/routes/connection.ts` accepts PATs in request bodies for validation.
-- `server/routes/query.ts` accepts PATs from `x-ado-pat` or bearer authorization headers.
-- PAT values must not be written to logs, application database plaintext, browser persistent storage or audit events. The target should bind a per-user credential to a verified server-side identity/session, using CAT-approved secret storage or session-only storage if persistence is not approved.
+### Azure DevOps and PAT
+- PAT is held in browser localStorage as explicitly requested.
+- PAT is sent in request headers over HTTPS and is not written to backend persistence, logs or audit records.
+- Connection validation is stateless.
+- Query, sprint, Area Path, work-item update and Sprint Closure requests receive the current browser's PAT, organization/project settings and Resource Master.
+- Azure errors must remain explicit; no fake story/iteration fallback is permitted.
+- localStorage remains accessible to same-origin JavaScript. This security trade-off requires CAT security approval and XSS protections.
 
-### 4. Mock and fabricated data paths
-- `server/db.ts` imports `INITIAL_RESOURCES` and `INITIAL_STORIES`, seeds them on initialization, and has repair logic that can repopulate resource data from mock constants.
-- `server/routes/auth.ts` and `server/routes/connection.ts` expose mode-switch endpoints for mock/Azure modes.
-- `server/routes/resources.ts` imports mock resource constants and exposes a factory-baseline reset endpoint.
-- `src/utils/storage.ts` imports `INITIAL_STORIES`, returns seeded stories when browser storage is empty/invalid, and supplies a fabricated default ADO connection configuration.
-- `src/App.tsx` imports `INITIAL_RESOURCES`, seeds initial UI state with a default manager, sample project tags, sample sprint/area values and a default connected state.
-- `server/routes/query.ts` falls back to standardized database sprints when live Azure iteration retrieval fails.
-- `server/adoService.ts` includes a network-error path that can return simulated successful Azure validation.
-- These paths must be removed or replaced with explicit empty/not-connected/error states. Empty production data is valid; fabricated data is not.
+### Routes and identity
+- Shared manager/resource/project APIs have been retired or are no longer mounted.
+- Query and Sprint Closure no longer read a global active manager.
+- Browser audit ownership is established by signed HttpOnly cookie middleware.
+- The cookie is an audit partition key, not a verified CAT employee identity or SSO replacement.
+- CAT network access controls are an infrastructure dependency.
 
-### 5. API and authorization
-- Current APIs are mounted under legacy paths such as `/api/auth`, `/api/connection`, `/api/resources`, `/api/query`, `/api/sprints`, `/api/area-paths` and `/api/audit`.
-- The inspected route handlers call global database methods directly and do not show verified user identity or route-level permission enforcement.
-- A versioned API should derive the user from a verified corporate session and enforce role, region, project and action permissions on every protected operation.
+## Current release blockers
 
-### 6. Existing SQL migration
-- `database/migrations/001_initial_schema.sql` defines managers, resources, project configurations and sprint closure audit tables.
-- It is not evidence that the application currently uses SQL; runtime persistence remains the JSON file.
-- The existing schema is a starting point only. It needs verified corporate users, role grants, region/project permission scope, per-user settings, session metadata, audit actor identity, and appropriate uniqueness/foreign-key constraints.
+- Verify all frontend flows against the new browser-local API contract.
+- Complete end-to-end PAT expiry/replacement, Azure permission and outage testing.
+- Verify audit cookie isolation, persistence across server restart and deployment, and behavior after cookie deletion.
+- Validate audit volume permissions, backup and restore on CAT hosting.
+- Confirm CAT approves localStorage PAT handling and the proposed network-only access model.
+- Confirm deployment is single-instance or replace the JSON audit file with shared transactional storage.
+- Complete full multi-user concurrency testing.
+- Do not deploy to CAT production before CAT security and infrastructure approval.
 
-## Day 1 decisions and guardrails
+## Explicitly not required under the current product model
 
-1. Preserve existing UI components and business workflows; replace data/authentication plumbing underneath them.
-2. Do not replace Azure DevOps live integration logic without first mapping its WIQL and work-item update behavior.
-3. No default users, stories, resources, project tags, sprints or successful connection state in production.
-4. On Azure DevOps timeout, network failure, invalid PAT or permission denial, return an explicit typed error. Never return mock or cached data as live.
-5. Do not migrate old browser storage into corporate production automatically. Any data import must be an explicit, reviewed migration from a trusted source.
-6. Database engine remains undecided. Implement repository interfaces and portable migration design; choose PostgreSQL or SQL Server after CAT IT confirms its supported platform.
-7. CAT SSO and on-prem infrastructure are unavailable to the developer at this stage. Use a documented identity adapter boundary and local test identity provider only in non-production tests; production must fail closed if corporate identity is not configured.
-
-## Priority implementation sequence
-
-### P0 — Required before any multi-user pilot
-- Add verified request-scoped identity and authorization middleware.
-- Eliminate global active-manager reads/writes and manager-switch endpoints.
-- Replace JSON persistence with a transactional SQL repository.
-- Remove mock mode, mock seed data, factory resets and all silent fallback paths.
-- Replace browser localStorage PAT storage with the approved individual credential/session design.
-- Scope every resource, project, sprint configuration, query and audit operation by authorization.
-- Add tests proving cross-user and cross-region isolation.
-
-### P1 — Required before production
-- Corporate SSO integration and session lifecycle.
-- CAT-approved secret management, TLS, reverse proxy and outbound Azure DevOps connectivity.
-- Database backup/restore, operational logging, metrics, alerts and deployment rollback.
-- Multi-region UAT, concurrency testing, vulnerability scanning and security approval.
-
-## Day 1 completion criteria
-- Migration branch created from `main`.
-- Key high-risk source paths inspected and recorded.
-- No production code changed without a verified replacement design.
-- Database engine and corporate identity integration remain explicit external decisions, not guessed.
+- SQL persistence for Resource Master, project visibility, manager preferences or work items.
+- CAT SSO implementation, unless CAT requires verified employee identity or employee-level authorization.
+- Cross-device audit history.
+- Centralized manager profiles or shared active-manager state.
