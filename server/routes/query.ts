@@ -518,7 +518,7 @@ router.post(['/sprint-close/execute', '/execute'], async (req: Request, res: Res
 
 // GET /api/query/sprint-close/history or /api/sprint-close/history - Retrieve closure history & audit logs
 router.get(['/sprint-close/history', '/history'], (req: Request, res: Response) => {
-  const clientId = getBrowserOwnerId(req);
+  const clientId = getBrowserOwnerId(res);
   if (!isValidBrowserOwnerId(clientId)) {
     return res.status(400).json({
       success: false,
