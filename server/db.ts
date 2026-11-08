@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { INITIAL_RESOURCES, INITIAL_STORIES } from '../src/data/mockAdoData';
 import { normalize } from './services/normalize';
 
 /**
@@ -160,7 +159,7 @@ export interface StoredClosureAudit {
 
 interface DatabaseSchema {
   activeManagerId: string;
-  dataSource: 'mock' | 'azure';
+  dataSource: 'azure';
   managers: ManagerProfile[];
   resources: StoredResource[];
   projectTags: StoredProjectTag[];
@@ -171,28 +170,28 @@ interface DatabaseSchema {
 const DB_FILE_PATH = path.resolve(process.cwd(), '.sit_nexus_db.json');
 
 // Default initial manager (Section 9 - Single MANAGER entity, Region is a filter, NO PAT in database)
-const DEFAULT_MANAGERS: ManagerProfile[] = [
-  {
-    id: 'mgr-1',
-    name: 'Karthikeyan',
-    email: 'karthikeyan@cat.com',
-    role: 'MANAGER',
-    region: 'All',
-    organization: 'cat-digital',
-    project: 'Cat Digital',
-    areaPath: 'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers',
-    is_active: true,
-    isConnected: true,
-    permissions: {
-      orgAccess: true,
-      projectAccess: true,
-      workItemRead: true,
-      workItemUpdate: true,
-    },
-    created_at: '2026-09-01T08:00:00Z',
-    updated_at: '2026-09-01T08:00:00Z',
+const DEFAULT_MANAGERS: ManagerProfile[] = [];
+
+const EMPTY_MANAGER: ManagerProfile = {
+  id: '',
+  name: '',
+  email: '',
+  role: 'MANAGER',
+  region: '',
+  organization: '',
+  project: '',
+  areaPath: '',
+  isConnected: false,
+  permissions: {
+    orgAccess: false,
+    projectAccess: false,
+    workItemRead: false,
+    workItemUpdate: false,
   },
-];
+  is_active: false,
+  created_at: '',
+  updated_at: '',
+};
 
 const DEFAULT_AUDIT_LOG: StoredClosureAudit[] = [];
 
@@ -208,8 +207,15 @@ class DatabaseService {
       if (fs.existsSync(DB_FILE_PATH)) {
         const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
         const parsed = JSON.parse(raw);
-        if (parsed.managers && parsed.resources) {
-          // Check if resources have old demo names that need removal
+        if (Array.isArray(parsed.managers) && Array.isArray(parsed.resources)) {
+          // Remove the historical demo identity and fixture rows. Never repopulate
+          // an empty resource/project/story store with sample data.
+          parsed.managers = parsed.managers.filter((manager: ManagerProfile) =>
+            manager.id !== 'mgr-1' &&
+            manager.email?.toLowerCase() !== 'karthikeyan@cat.com'
+          );
+          parsed.activeManagerId = '';
+
           const demoNames = new Set([
             'murali', 'priya sharma', 'rajesh kumar', 'sneha patel', 'anand varma',
             'arun prakash', 'deepa krishnan', 'ganesh iyer', 'harish nair', 'ishita roy',
@@ -221,64 +227,38 @@ class DatabaseService {
             'matteo rossi', 'nathalie meyer', 'piotr kowalski', 'john', 'david miller',
             'emily chen', 'john bradley', 'aaron brooks', 'blake morrison', 'chloe taylor',
             'derek vance', 'grace harrison', 'jessica vance', 'logan hayes', 'mason cooper',
-            'rachel adams', 'tyler jenkins', 'wyatt russell'
+            'rachel adams', 'tyler jenkins', 'wyatt russell', 'karthikeyan r'
           ]);
+          const seenResources = new Set<string>();
+          parsed.resources = parsed.resources.filter((resource: StoredResource) => {
+            if (!resource?.name || demoNames.has(normalize(resource.name))) return false;
+            const key = `${normalize(resource.name)}_${normalize(resource.email)}`;
+            if (seenResources.has(key)) return false;
+            seenResources.add(key);
+            return true;
+          });
 
-          const hasOldDemoData = parsed.resources.some((r: any) => 
-            demoNames.has(normalize(r.name))
-          );
+          const seededProjectIds = new Set(['proj-1', 'proj-2', 'proj-3', 'proj-4', 'proj-5', 'proj-6']);
+          parsed.projectTags = (Array.isArray(parsed.projectTags) ? parsed.projectTags : [])
+            .filter((tag: StoredProjectTag) => !seededProjectIds.has(tag.id));
+          // Work items are always live Azure DevOps data, never persisted story snapshots.
+          parsed.stories = [];
 
-          if (hasOldDemoData || parsed.resources.length === 0) {
-            parsed.resources = INITIAL_RESOURCES.map((r) => ({
-              id: r.id,
-              name: r.name,
-              normalized_name: normalize(r.name).replace(/\s+/g, ' '),
-              region: r.region,
-              email: r.email,
-              normalized_email: normalize(r.email),
-              is_active: r.status === 'Active',
-              status: r.status,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }));
-            this.saveToDisk(parsed);
-          } else {
-            // Deduplicate by case-insensitive name & email
-            const seen = new Set<string>();
-            const deduped: StoredResource[] = [];
-            for (const r of parsed.resources) {
-              const key = `${normalize(r.name)}_${normalize(r.email)}`;
-              if (!seen.has(key)) {
-                seen.add(key);
-                deduped.push(r);
-              }
-            }
-            if (deduped.length !== parsed.resources.length) {
-              parsed.resources = deduped;
-              this.saveToDisk(parsed);
-            }
-          }
-          if (!parsed.closureAuditLog) {
+          if (!Array.isArray(parsed.closureAuditLog)) {
             parsed.closureAuditLog = [];
           } else {
-            // Remove any fabricated historical mock records
-            const prevLen = parsed.closureAuditLog.length;
             parsed.closureAuditLog = parsed.closureAuditLog.filter(
-              (rec: any) => rec.id !== 'audit-sprint-18-in'
+              (record: StoredClosureAudit) => record.id !== 'audit-sprint-18-in'
             );
-            if (parsed.closureAuditLog.length !== prevLen) {
-              this.saveToDisk(parsed);
-            }
           }
-          if (!parsed.dataSource) {
-            parsed.dataSource = (process.env.DATA_SOURCE as 'mock' | 'azure') || 'azure';
-          }
-          // Ensure managers don't have legacy encryptedPat
-          parsed.managers = parsed.managers.map((m: Record<string, unknown>) => {
-            delete m.encryptedPat;
-            delete m.maskedPat;
-            return m;
+
+          parsed.dataSource = 'azure';
+          parsed.managers = parsed.managers.map((manager: Record<string, unknown>) => {
+            delete manager.encryptedPat;
+            delete manager.maskedPat;
+            return manager;
           });
+          this.saveToDisk(parsed);
           return parsed;
         }
       }
@@ -286,32 +266,13 @@ class DatabaseService {
       console.error('Warning: could not read DB file, initializing with defaults');
     }
 
-    const now = new Date().toISOString();
     const initialData: DatabaseSchema = {
-      activeManagerId: 'mgr-1',
-      dataSource: (process.env.DATA_SOURCE as 'mock' | 'azure') || 'mock',
+      activeManagerId: '',
+      dataSource: 'azure',
       managers: DEFAULT_MANAGERS,
-      resources: INITIAL_RESOURCES.map((r) => ({
-        id: r.id,
-        name: r.name,
-        normalized_name: normalize(r.name).replace(/\s+/g, ' '),
-        region: r.region,
-        email: r.email,
-        normalized_email: normalize(r.email),
-        is_active: r.status === 'Active',
-        status: r.status,
-        created_at: now,
-        updated_at: now,
-      })),
-      projectTags: [
-        { id: 'proj-1', manager_id: 'mgr-1', tag_value: 'Admin Tool', display_name: 'Admin Tool', name: 'Admin Tool', is_visible: true, isHidden: false, source: 'AZURE_DEVOPS', discoveredFromAdo: true, created_at: now, updated_at: now },
-        { id: 'proj-2', manager_id: 'mgr-1', tag_value: 'DLMA', display_name: 'DLMA', name: 'DLMA', is_visible: true, isHidden: false, source: 'AZURE_DEVOPS', discoveredFromAdo: true, created_at: now, updated_at: now },
-        { id: 'proj-3', manager_id: 'mgr-1', tag_value: 'One Site', display_name: 'One Site', name: 'One Site', is_visible: true, isHidden: false, source: 'AZURE_DEVOPS', discoveredFromAdo: true, created_at: now, updated_at: now },
-        { id: 'proj-4', manager_id: 'mgr-1', tag_value: 'Warranty', display_name: 'Warranty', name: 'Warranty', is_visible: true, isHidden: false, source: 'AZURE_DEVOPS', discoveredFromAdo: true, created_at: now, updated_at: now },
-        { id: 'proj-5', manager_id: 'mgr-1', tag_value: 'Customer', display_name: 'Customer', name: 'Customer', is_visible: true, isHidden: false, source: 'AZURE_DEVOPS', discoveredFromAdo: true, created_at: now, updated_at: now },
-        { id: 'proj-6', manager_id: 'mgr-1', tag_value: 'Access Management', display_name: 'Access Management', name: 'Access Management', is_visible: true, isHidden: false, source: 'AZURE_DEVOPS', discoveredFromAdo: true, created_at: now, updated_at: now },
-      ],
-      stories: INITIAL_STORIES,
+      resources: [],
+      projectTags: [],
+      stories: [],
       closureAuditLog: DEFAULT_AUDIT_LOG,
     };
 
@@ -334,7 +295,7 @@ class DatabaseService {
 
   public getActiveManager(): ManagerProfile {
     const found = this.data.managers.find((m) => m.id === this.data.activeManagerId);
-    return found || this.data.managers[0] || DEFAULT_MANAGERS[0];
+    return found || this.data.managers[0] || EMPTY_MANAGER;
   }
 
   public setActiveManager(id: string): ManagerProfile | null {
@@ -465,37 +426,18 @@ class DatabaseService {
     return null;
   }
 
-  // Data Source Mode (Section 20 & 21: MOCK MODE vs REAL AZURE DEVOPS MODE)
-  public getDataSource(): 'mock' | 'azure' {
-    return this.data.dataSource || 'mock';
+  // The backend is Azure DevOps-only; no selectable mock data source exists.
+  public getDataSource(): 'azure' {
+    return 'azure';
   }
 
-  public setDataSource(mode: 'mock' | 'azure'): void {
-    this.data.dataSource = mode;
-    this.saveToDisk(this.data);
-  }
-
-  // Sprints (Section 23: GET /api/sprints)
+  // Live iterations and Area Paths are supplied by Azure DevOps route handlers.
   public getAvailableSprints(): { id: string; name: string; path: string; startDate?: string; endDate?: string }[] {
-    return [
-      { id: 'sprint-20', name: 'Sprint 20 (Sep 30 - Oct 13)', path: 'Cat Digital\\2026\\Sprint 20 (Sep 30 - Oct 13)', startDate: '2026-09-30', endDate: '2026-10-13' },
-      { id: 'sprint-21', name: 'Sprint 21 (Oct 14 - Oct 27)', path: 'Cat Digital\\2026\\Sprint 21 (Oct 14 - Oct 27)', startDate: '2026-10-14', endDate: '2026-10-27' },
-      { id: 'sprint-22', name: 'Sprint 22 (Oct 28 - Nov 10)', path: 'Cat Digital\\2026\\Sprint 22 (Oct 28 - Nov 10)', startDate: '2026-10-28', endDate: '2026-11-10' },
-      { id: 'sprint-23', name: 'Sprint 23 (Nov 11 - Nov 24)', path: 'Cat Digital\\2026\\Sprint 23 (Nov 11 - Nov 24)', startDate: '2026-11-11', endDate: '2026-11-24' },
-      { id: 'sprint-24', name: 'Sprint 24 (Nov 25 - Dec 8)', path: 'Cat Digital\\2026\\Sprint 24 (Nov 25 - Dec 8)', startDate: '2026-11-25', endDate: '2026-12-08' },
-      { id: 'sprint-25', name: 'Sprint 25 (Dec 9 - Dec 22)', path: 'Cat Digital\\2026\\Sprint 25 (Dec 9 - Dec 22)', startDate: '2026-12-09', endDate: '2026-12-22' },
-      { id: 'sprint-26', name: 'Sprint 26 (Dec 23 - Jan 5)', path: 'Cat Digital\\2026\\Sprint 26 (Dec 23 - Jan 5)', startDate: '2026-12-23', endDate: '2027-01-05' },
-    ];
+    return [];
   }
 
-  // Area Paths (Section 24: GET /api/area-paths)
   public getAvailableAreaPaths(): string[] {
-    return [
-      'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers',
-      'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Vikings',
-      'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Elites',
-      'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Argus',
-    ];
+    return [];
   }
 
   // Closure Audit Log (Section 30)
