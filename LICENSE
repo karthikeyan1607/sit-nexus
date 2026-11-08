@@ -1,25 +1,21 @@
-PROPRIETARY SOFTWARE LICENSE
-Copyright (c) 2026 Karthikeyan R. All rights reserved.
+This is free and unencumbered software released into the public domain.
 
-SIT Nexus, including its source code, object code, design, user interface,
-documentation, workflows, and associated materials (collectively, the
-"Software"), is proprietary.
+Anyone is free to copy, modify, publish, use, compile, sell, distribute, sublicense,
+and/or otherwise do whatever they want with this software, for any purpose,
+commercial or non-commercial, and by any means.
 
-No permission or license is granted, whether express or implied, to any
-person or organization to use, copy, modify, merge, publish, distribute,
-sublicense, sell, or create derivative works of the Software, in whole or
-in part, without prior written permission from the copyright holder.
-
-Access to this repository or possession of a copy of the Software does not
-grant any ownership rights or other license.
-
-Any permitted use must be documented in a separate written agreement signed
-by the copyright holder. All rights not expressly granted in such an
-agreement are reserved.
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the public
+domain. We make this dedication for the benefit of the public at large and to
+the detriment of our heirs and successors. We intend this dedication to be an
+overt act of relinquishment in perpetuity of all present and future rights to
+this software under copyright law.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW.
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-This notice does not override any applicable employment agreement, work-made-
-for-hire arrangement, intellectual-property assignment, corporate policy, or
-other agreement that may determine ownership or permitted use of the Software.
+For more information, please refer to <https://unlicense.org>.
