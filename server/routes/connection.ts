@@ -96,19 +96,17 @@ router.post('/validate', async (req: Request, res: Response) => {
 
 /**
  * GET /api/connection/status (Section 19)
- * Returns current metadata and data source mode
+ * Returns current Azure DevOps connection metadata
  */
 router.get('/status', (req: Request, res: Response) => {
   const activeManager = db.getActiveManager();
-  const dataSource = db.getDataSource();
 
   res.json({
     success: true,
     data: {
-      organization: activeManager.organization || 'caterpillar',
-      project: activeManager.project || 'CAT Digital',
-      areaPath: activeManager.areaPath || 'CAT Digital',
-      dataSource,
+      organization: activeManager.organization || '',
+      project: activeManager.project || '',
+      areaPath: activeManager.areaPath || '',
       manager: {
         id: activeManager.id,
         name: activeManager.name,
@@ -120,26 +118,5 @@ router.get('/status', (req: Request, res: Response) => {
   });
 });
 
-/**
- * POST /api/connection/mode (Section 20 & 21: MOCK MODE vs REAL AZURE DEVOPS MODE)
- */
-router.post('/mode', (req: Request, res: Response) => {
-  const { mode } = req.body;
-  if (mode !== 'mock' && mode !== 'azure') {
-    return res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_MODE', message: 'Mode must be either "mock" or "azure".' }
-    });
-  }
-
-  db.setDataSource(mode);
-  res.json({
-    success: true,
-    data: {
-      dataSource: mode,
-      message: `SIT Nexus operating in ${mode === 'azure' ? 'REAL AZURE DEVOPS' : 'MOCK'} MODE.`
-    }
-  });
-});
 
 export default router;
