@@ -41,8 +41,17 @@ export interface AuditEvent {
   correlationId?: string;
   details: Record<string, unknown>;
 }
+export interface UserSessionRecord {
+  id: string;
+  userId: string;
+  identitySessionId: string;
+  expiresAt: string;
+  revokedAt?: string;
+  createdAt: string;
+}
 export interface Transaction {
   users: UserRepository;
+  sessions: SessionRepository;
   resources: ResourceRepository;
   projects: ProjectRepository;
   sprints: SprintRepository;
@@ -70,8 +79,14 @@ export interface SprintRepository {
   upsert(principal: CorporatePrincipal, config: SprintConfiguration): Promise<void>;
 }
 export interface SettingsRepository {
-  get(userId: string): Promise<Record<string, unknown>>;
-  update(userId: string, settings: Record<string, unknown>): Promise<void>;
+  /** Settings are always scoped to the authenticated principal. */
+  getForUser(principal: CorporatePrincipal): Promise<Record<string, unknown>>;
+  updateForUser(principal: CorporatePrincipal, settings: Record<string, unknown>): Promise<void>;
+}
+export interface SessionRepository {
+  create(session: UserSessionRecord): Promise<void>;
+  findActiveByIdentitySessionId(identitySessionId: string, at: string): Promise<UserSessionRecord | null>;
+  revoke(identitySessionId: string, revokedAt: string): Promise<void>;
 }
 export interface AuditRepository {
   append(event: AuditEvent): Promise<void>;
