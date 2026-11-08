@@ -4,6 +4,7 @@ import path from 'path';
 import connectionRoutes from './server/routes/connection';
 import queryRoutes, { handleGetSprints, handleGetAreaPaths } from './server/routes/query';
 import { db } from './server/db';
+import { createBrowserAuditIdentity } from './server/corporate/browserAuditIdentity';
 
 
 const app = express();
@@ -13,6 +14,10 @@ const isProduction = process.env.NODE_ENV === 'production';
 // authenticate CAT employees; CAT network/VDI access restrictions are enforced by infrastructure.
 if (isProduction && (!process.env.SIT_NEXUS_AUDIT_FILE || !path.isAbsolute(process.env.SIT_NEXUS_AUDIT_FILE))) {
   throw new Error('SIT Nexus production startup requires SIT_NEXUS_AUDIT_FILE to point to a CAT-managed persistent volume.');
+}
+const auditSessionSecret = process.env.SIT_NEXUS_AUDIT_SESSION_SECRET || (isProduction ? '' : 'sit-nexus-local-development-audit-secret-change-before-deploy');
+if (isProduction && Buffer.byteLength(auditSessionSecret, 'utf8') < 32) {
+  throw new Error('SIT_NEXUS_AUDIT_SESSION_SECRET must be configured with at least 32 bytes in production.');
 }
 
 // Body parser
@@ -37,11 +42,8 @@ app.get('/api/sprints', handleGetSprints);
 app.get('/api/area-paths', handleGetAreaPaths);
 
 app.use('/api/audit', (req: Request, res: Response) => {
-  const clientId = String(req.headers['x-sit-nexus-client-id'] || '').trim();
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(clientId)) {
-    return res.status(400).json({ success: false, error: { code: 'BROWSER_ID_REQUIRED', message: 'A valid browser installation identifier is required.' } });
-  }
-  const history = db.getClosureAuditLog(clientId);
+  const ownerId = String(res.locals.auditOwnerId || '');
+  const history = db.getClosureAuditLog(ownerId);
   return res.json({ success: true, history, data: history });
 });
 
