@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
 import { db, StoredResource } from '../db';
-import { INITIAL_RESOURCES } from '../../src/data/mockAdoData';
 import { normalize } from '../services/normalize';
 
 const router = Router();
@@ -60,8 +59,8 @@ router.post('/import', (req: Request, res: Response) => {
 router.post('/replace', (req: Request, res: Response) => {
   const { resources } = req.body;
 
-  if (!Array.isArray(resources) || resources.length === 0) {
-    return res.status(400).json({ error: 'Valid resources array is required for replacement.' });
+  if (!Array.isArray(resources)) {
+    return res.status(400).json({ error: 'A resources array is required for replacement.' });
   }
 
   const sanitized: StoredResource[] = resources.map((r, i) => {
@@ -161,26 +160,13 @@ router.delete('/:id', (req: Request, res: Response) => {
   res.json({ success: true, message: `Resource ${id} deleted.` });
 });
 
-// POST /api/resources/reset - Reset to factory baseline
-router.post('/reset', (req: Request, res: Response) => {
-  const now = new Date().toISOString();
-  const baseline: StoredResource[] = INITIAL_RESOURCES.map((r, i) => ({
-    id: r.id || `res-base-${i}`,
-    name: r.name,
-    normalized_name: normalize(r.name),
-    region: r.region,
-    email: r.email,
-    normalized_email: normalize(r.email),
-    is_active: true,
-    status: 'Active',
-    created_at: now,
-    updated_at: now,
-  }));
-  db.setResources(baseline);
-  res.json({
+// POST /api/resources/reset - Legacy endpoint: clearing is explicit, never reseeds a factory list.
+router.post('/reset', (_req: Request, res: Response) => {
+  db.setResources([]);
+  return res.json({
     success: true,
-    message: `Reset Resource Master to factory baseline (${baseline.length} resources).`,
-    totalCount: baseline.length,
+    message: 'Resource Master cleared. Upload an approved resource master to repopulate it.',
+    totalCount: 0,
   });
 });
 
