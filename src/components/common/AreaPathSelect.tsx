@@ -1,6 +1,5 @@
 import React from 'react';
 import { Layers, ChevronDown } from 'lucide-react';
-import { REQUIRED_AREA_PATHS } from '../../constants/paths';
 
 export interface AreaPathSelectProps {
   value: string;
@@ -12,18 +11,10 @@ export interface AreaPathSelectProps {
   showIcon?: boolean;
   showLabel?: boolean;
   label?: string;
+  additionalOptions?: string[];
 }
 
-/**
- * Reusable AreaPathSelect component for SIT Nexus.
- * Provides a standardized dropdown for selecting Azure DevOps Area Paths.
- * Features:
- * - 4 mandatory exact Area Path options
- * - Tooltip displaying the full unclipped path
- * - Clean ellipsis truncation to protect responsive layouts
- * - Visible focus ring (#FFCD11) matching CAT styling
- * - Full keyboard accessibility
- */
+/** Area Path choices are supplied exclusively by the live Azure DevOps API. */
 export const AreaPathSelect: React.FC<AreaPathSelectProps> = ({
   value,
   onChange,
@@ -34,15 +25,13 @@ export const AreaPathSelect: React.FC<AreaPathSelectProps> = ({
   showIcon = true,
   showLabel = false,
   label = 'AREA PATH',
+  additionalOptions = [],
 }) => {
-  // Ensure the list includes all 4 required options, plus the current value if custom
   const options = React.useMemo(() => {
-    const list = [...REQUIRED_AREA_PATHS] as string[];
-    if (value && !list.includes(value)) {
-      list.push(value);
-    }
+    const list = [...new Set(additionalOptions.filter(Boolean))];
+    if (value && !list.includes(value)) list.unshift(value);
     return list;
-  }, [value]);
+  }, [value, additionalOptions]);
 
   return (
     <div className={`flex flex-col gap-1 w-full ${className}`}>
@@ -62,18 +51,14 @@ export const AreaPathSelect: React.FC<AreaPathSelectProps> = ({
           name={name}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
+          disabled={disabled || options.length === 0}
           aria-label={label || 'Select Area Path'}
           className="w-full h-9 bg-white border border-[#D1D5DB] focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-mono font-medium text-[#1F2937] rounded-lg pl-3 pr-8 py-1.5 appearance-none outline-none transition-all truncate cursor-pointer disabled:bg-[#F9FAFB] disabled:text-[#9CA3AF] disabled:cursor-not-allowed"
         >
-          {options.map((opt) => (
-            <option
-              key={opt}
-              value={opt}
-              title={opt}
-              className="py-1 font-mono text-xs text-[#1F2937] bg-white"
-            >
-              {opt}
+          <option value="">{options.length ? 'Select Area Path' : 'Connect Azure DevOps to load Area Paths'}</option>
+          {options.map((option) => (
+            <option key={option} value={option} title={option} className="py-1 font-mono text-xs text-[#1F2937] bg-white">
+              {option}
             </option>
           ))}
         </select>
