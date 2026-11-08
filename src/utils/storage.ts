@@ -1,60 +1,71 @@
 import { WorkItemStory, AdoConnectionConfig } from '../types';
-import { INITIAL_STORIES } from '../data/mockAdoData';
 
 const STORIES_STORAGE_KEY = 'sit_nexus_stories_v1';
 const ADO_CONFIG_STORAGE_KEY = 'sit_nexus_ado_config_v1';
 
 export function loadStories(): WorkItemStory[] {
   try {
-    const raw = localStorage.getItem(STORIES_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORIES_STORAGE_KEY, JSON.stringify(INITIAL_STORIES));
-      return INITIAL_STORIES;
-    }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
-    }
-  } catch (err) {
-    console.error('Failed to load stories from local storage:', err);
+    // Work items are always fetched from live Azure DevOps. Purge old local snapshots.
+    localStorage.removeItem(STORIES_STORAGE_KEY);
+  } catch {
+    // Storage may be unavailable; the live API remains the source of truth.
   }
-  return INITIAL_STORIES;
+  return [];
 }
 
-export function saveStories(stories: WorkItemStory[]): void {
+export function saveStories(_stories: WorkItemStory[]): void {
   try {
-    localStorage.setItem(STORIES_STORAGE_KEY, JSON.stringify(stories));
-  } catch (err) {
-    console.error('Failed to save stories to local storage:', err);
+    localStorage.removeItem(STORIES_STORAGE_KEY);
+  } catch {
+    // Work-item snapshots are not persisted in browser storage.
   }
 }
 
 export function resetStoriesToDefault(): WorkItemStory[] {
-  localStorage.setItem(STORIES_STORAGE_KEY, JSON.stringify(INITIAL_STORIES));
-  return INITIAL_STORIES;
+  try {
+    localStorage.removeItem(STORIES_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+  return [];
 }
 
 export function loadAdoConfig(): AdoConnectionConfig {
   try {
     const raw = localStorage.getItem(ADO_CONFIG_STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw) as Partial<AdoConnectionConfig>;
+      // Older versions stored the PAT in this config blob. Never load it.
+      return {
+        orgUrl: parsed.orgUrl || '',
+        projectName: parsed.projectName || '',
+        pat: '',
+        isConnected: false,
+        lastSyncTimestamp: parsed.lastSyncTimestamp || '',
+      };
     }
-  } catch (err) {
-    console.error('Failed to load ADO config:', err);
+  } catch {
+    // ignore invalid/stale browser configuration
   }
   return {
-    orgUrl: 'https://dev.azure.com/cat-enterprise-sit',
-    projectName: 'Digital-Execution-Core',
-    pat: '••••••••••••••••••••••••',
-    isConnected: true,
-    lastSyncTimestamp: '2026-10-01 09:00 EST'
+    orgUrl: '',
+    projectName: '',
+    pat: '',
+    isConnected: false,
+    lastSyncTimestamp: '',
   };
 }
 
 export function saveAdoConfig(config: AdoConnectionConfig): void {
   try {
-    localStorage.setItem(ADO_CONFIG_STORAGE_KEY, JSON.stringify(config));
+    // Keep connection metadata only; never duplicate the PAT in this storage key.
+    localStorage.setItem(ADO_CONFIG_STORAGE_KEY, JSON.stringify({
+      orgUrl: config.orgUrl,
+      projectName: config.projectName,
+      pat: '',
+      isConnected: false,
+      lastSyncTimestamp: config.lastSyncTimestamp || '',
+    }));
   } catch (err) {
     console.error('Failed to save ADO config:', err);
   }
