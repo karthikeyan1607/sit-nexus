@@ -11,42 +11,57 @@ const router = Router();
 
 // GET /api/query/sprints (or /api/sprints) - Retrieve available iteration paths (live ADO or verified standardized)
 export async function handleGetSprints(req: Request, res: Response) {
-  const pat = (req.headers['x-ado-pat'] as string) || (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : '');
-  const activeManager = db.getActiveManager();
-  const org = String(activeManager.organization || 'cat-digital').trim();
-  const proj = String(activeManager.project || 'Cat Digital').trim();
-
-  if (pat && pat.trim().length > 0 && org && proj) {
-    try {
-      const client = new AzureClient(org, proj);
-      const iterationService = new IterationService(client);
-      const liveIterations = await iterationService.getIterations(pat.trim());
-      const filteredIterations = (liveIterations || []).filter((it) => {
-        const p = `${it.path || ''} ${it.name || ''}`.toLowerCase();
-        return !p.includes('sprint 19') && !p.includes('sprint 18') && !p.includes('2024');
-      });
-      if (filteredIterations && filteredIterations.length > 0) {
-        return res.json({
-          success: true,
-          source: 'ado-live',
-          sprints: filteredIterations.map((it) => ({
-            id: it.id,
-            name: it.name,
-            path: it.path,
-            startDate: it.startDate,
-            endDate: it.endDate,
-            isCurrent: it.isCurrent,
-          })),
-        });
-      }
-
-    } catch {
-      // Fall through to database standardized sprints
-    }
+  const pat = (req.headers['x-ado-pat'] as string) || (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\\s+/i, '') : '');
+  if (!pat?.trim()) {
+    return res.status(401).json({
+      success: false,
+      error: { code: 'AZURE_DEVOPS_NOT_CONNECTED', message: 'Connect an individual Azure DevOps account before loading iterations.' }
+    });
   }
 
-  const sprints = db.getAvailableSprints();
-  res.json({ success: true, source: 'standardized', sprints });
+  const activeManager = db.getActiveManager();
+  const org = String(activeManager.organization || '').trim();
+  const proj = String(activeManager.project || '').trim();
+  if (!org || !proj) {
+    return res.status(409).json({
+      success: false,
+      error: { code: 'AZURE_DEVOPS_CONFIGURATION_MISSING', message: 'Azure DevOps organization and project are not configured.' }
+    });
+  }
+
+  try {
+    const client = new AzureClient(org, proj);
+    const iterationService = new IterationService(client);
+    const liveIterations = await iterationService.getIterations(pat.trim());
+    const filteredIterations = (liveIterations || []).filter((it) => {
+      const p = `${it.path || ''} ${it.name || ''}`.toLowerCase();
+      return !p.includes('sprint 19') && !p.includes('sprint 18') && !p.includes('2024');
+    });
+    return res.json({
+      success: true,
+      source: 'ado-live',
+      sprints: filteredIterations.map((it) => ({
+        id: it.id,
+        name: it.name,
+        path: it.path,
+        startDate: it.startDate,
+        endDate: it.endDate,
+        isCurrent: it.isCurrent,
+      })),
+    });
+  } catch (err: unknown) {
+    const failure = err as { statusCode?: number; code?: string };
+    const statusCode = failure?.statusCode === 504 ? 504 : 502;
+    return res.status(statusCode).json({
+      success: false,
+      error: {
+        code: failure?.code || 'AZURE_ITERATION_LOOKUP_FAILED',
+        message: statusCode === 504
+          ? 'Azure DevOps iteration lookup timed out. Retry after checking connectivity.'
+          : 'Unable to retrieve iterations from Azure DevOps. No fallback data was returned.'
+      }
+    });
+  }
 }
 
 router.get('/sprints', handleGetSprints);
