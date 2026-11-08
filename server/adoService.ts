@@ -862,6 +862,13 @@ ORDER BY [System.Id] DESC`;
         statusCode: 409,
       };
     }
+    if (!area || !iteration) {
+      throw {
+        code: 'AZURE_QUERY_SCOPE_REQUIRED',
+        message: 'Select both an Area Path and an Iteration Path before previewing sprint closure.',
+        statusCode: 400,
+      };
+    }
 
     const rawStories: StoredStory[] = [];
     let filterIsolation: SprintClosureDiagnostics['filterIsolation'] | undefined = undefined;
