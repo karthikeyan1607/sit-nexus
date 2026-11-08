@@ -676,8 +676,19 @@ export default function App() {
                 availableAreaPaths={availableAreaPaths}
                 onManagerUpdated={(mgr) => {
                   setActiveManager(mgr);
-                  showToast(`Active manager switched to ${mgr.name}`);
-                  handleRunQuery();
+                  const nextFilter = { ...filter, areaPath: mgr.areaPath || filter.areaPath };
+                  setFilter(nextFilter);
+                  showToast(mgr.isConnected ? 'Azure DevOps browser connection settings updated.' : 'Azure DevOps disconnected for this browser.');
+                  if (mgr.isConnected && CredentialService.hasPat()) {
+                    runBackendQuery(nextFilter);
+                  } else {
+                    setStories([]);
+                    setResourceGroups([]);
+                    setSummaryMetrics({
+                      totalResources: 0, totalStories: 0, totalStoryPoints: 0,
+                      activePoints: 0, completedPoints: 0, blockedCount: 0, reviewedCount: 0,
+                    });
+                  }
                 }}
               />
             )}
