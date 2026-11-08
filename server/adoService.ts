@@ -802,7 +802,7 @@ ORDER BY [System.Id] DESC`;
       region: string;
     },
     resourceMaster: StoredResource[],
-    pat: string
+    pat?: string
   ): Promise<SprintClosurePreviewResult> {
     const org = String(params.organization || '').trim();
     const proj = String(params.project || '').trim();
@@ -1044,7 +1044,7 @@ ORDER BY [System.Id] DESC`;
       managerId: string;
     },
     resourceMaster: StoredResource[],
-    pat: string
+    pat?: string
   ): Promise<{
     success: boolean;
     message: string;
