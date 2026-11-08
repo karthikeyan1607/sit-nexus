@@ -370,20 +370,15 @@ export default function App() {
   // ==========================================
   const handleReplaceResourceMaster = async (newResources: ResourceRecord[]) => {
     try {
-      // 1. Immediately store in browser localStorage under key 'sit_nexus_resource_master' (Requirement 1 & 2)
-      saveStoredResourceMaster(newResources);
-
-      // 2. Synchronize with backend API
+      // Resource Master is shared server data; never fall back to browser-only persistence.
       await replaceResourcesApi(newResources);
       const data = await getResourcesApi();
       setResourceMaster(data.resources);
-      setDynamicRegions(data.dynamicRegions);
-      showToast(`Resource Master replaced successfully with ${data.resources.length} resources!`);
+      setDynamicRegions(data.dynamicRegions || getDynamicRegions(data.resources));
+      showToast(`Resource Master replaced successfully with ${data.resources.length} resources.`);
       handleRunQuery();
     } catch (err: unknown) {
-      setResourceMaster(newResources);
-      setDynamicRegions(getDynamicRegions(newResources));
-      showToast(`Resource Master saved locally (${newResources.length} resources).`);
+      showToast('Failed to replace Resource Master on the server. No local-only copy was saved.');
     }
   };
 
