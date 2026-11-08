@@ -9,7 +9,6 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { FilterState } from '../types';
-import { AVAILABLE_SPRINTS } from '../data/mockAdoData';
 
 interface FilterBarProps {
   filter: FilterState;
@@ -19,6 +18,7 @@ interface FilterBarProps {
   dynamicRegions: { region: string; count: number }[];
   totalMasterCount: number;
   availableProjects: string[];
+  availableIterationPaths: string[];
   queryStats: {
     lastExecutedTime: string | null;
     durationMs: number;
@@ -35,6 +35,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   dynamicRegions,
   totalMasterCount,
   availableProjects,
+  availableIterationPaths,
   queryStats,
   onOpenProjectManager,
 }) => {
@@ -168,12 +169,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <select
                 id="sprint-select"
                 value={filter.sprint}
-                onChange={(e) => onChangeFilter({ sprint: e.target.value })}
+                onChange={(e) => onChangeFilter({ sprint: e.target.value, iterationPath: e.target.value })}
                 className="w-full h-11 bg-neutral-950 border border-neutral-800 focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] text-xs font-semibold text-neutral-100 rounded-lg px-3 py-2 appearance-none transition-colors cursor-pointer outline-none"
               >
-                {AVAILABLE_SPRINTS.map((sprint) => (
-                  <option key={sprint} value={sprint} className="bg-neutral-900 text-neutral-100">
-                    {sprint} {sprint === 'Sprint 19' ? '★ Active' : ''}
+                <option value="">Select an iteration</option>
+                {availableIterationPaths.map((iterationPath) => (
+                  <option key={iterationPath} value={iterationPath} className="bg-neutral-900 text-neutral-100">
+                    {iterationPath}
                   </option>
                 ))}
               </select>

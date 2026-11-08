@@ -1,140 +1,73 @@
-/**
- * Azure DevOps Credential Service (SIT Nexus Specification Section 3, 4, 5, 6)
- * 
- * Manages the manager's Azure DevOps Personal Access Token (PAT) in browser localStorage.
- * 
- * RULES:
- * - Stored in browser localStorage under key 'sit_nexus_ado_pat' to persist across restarts
- * - Preserved across browser close/reopen
- * - Cleared immediately when manager clicks [ Disconnect ] via localStorage.removeItem('sit_nexus_ado_pat')
- * - NEVER stored in PostgreSQL or server database
- * - NEVER logged to console, analytics, or error messages
- * - Masked for display in UI (e.g. ••••••••9918)
- */
-
 const PAT_STORAGE_KEY = 'sit_nexus_ado_pat';
 const CONNECTION_STORAGE_KEY = 'sit_nexus_ado_conn';
+const CLIENT_ID_STORAGE_KEY = 'sit_nexus_client_id';
 
 export interface StoredConnectionState {
   connected: boolean;
   organization: string;
   project: string;
+  areaPath?: string;
   canRead?: boolean;
   canWrite?: boolean;
   lastValidatedAt?: string;
 }
 
 export class CredentialService {
-  /**
-   * Retrieve active PAT from localStorage (with fallback migration from legacy sessionStorage)
-   */
   public static getPat(): string | null {
     try {
-      const localPat = localStorage.getItem(PAT_STORAGE_KEY);
-      if (localPat) return localPat;
-
-      // Migrate from legacy sessionStorage if present
-      const sessionPat = sessionStorage.getItem(PAT_STORAGE_KEY);
-      if (sessionPat) {
-        localStorage.setItem(PAT_STORAGE_KEY, sessionPat);
+      const pat = localStorage.getItem(PAT_STORAGE_KEY);
+      if (pat) return pat;
+      const legacy = sessionStorage.getItem(PAT_STORAGE_KEY);
+      if (legacy) {
+        localStorage.setItem(PAT_STORAGE_KEY, legacy);
         sessionStorage.removeItem(PAT_STORAGE_KEY);
-        return sessionPat;
+        return legacy;
       }
-    } catch {
-      return null;
-    }
+    } catch { return null; }
     return null;
   }
-
-  /**
-   * Save validated PAT to localStorage
-   */
   public static setPat(pat: string): void {
-    if (!pat) return;
+    if (!pat?.trim()) return;
     try {
       localStorage.setItem(PAT_STORAGE_KEY, pat.trim());
-      // Clean up legacy session storage if any
       sessionStorage.removeItem(PAT_STORAGE_KEY);
-    } catch {
-      console.warn('Local storage unavailable for PAT cache.');
-    }
+    } catch { throw new Error('Browser storage is unavailable. The Azure DevOps PAT was not saved.'); }
   }
-
-  /**
-   * Check if an active PAT is present in localStorage
-   */
-  public static hasPat(): boolean {
-    const pat = this.getPat();
-    return Boolean(pat && pat.length > 0);
-  }
-
-  /**
-   * Remove PAT from localStorage (Disconnect)
-   */
+  public static hasPat(): boolean { return Boolean(this.getPat()?.trim()); }
   public static clearPat(): void {
-    try {
-      localStorage.removeItem(PAT_STORAGE_KEY);
-      sessionStorage.removeItem(PAT_STORAGE_KEY);
-    } catch {
-      // ignore
-    }
+    try { localStorage.removeItem(PAT_STORAGE_KEY); sessionStorage.removeItem(PAT_STORAGE_KEY); } catch { /* ignore */ }
   }
-
-  /**
-   * Get cached connection metadata
-   */
   public static getConnection(): StoredConnectionState | null {
     try {
       const raw = localStorage.getItem(CONNECTION_STORAGE_KEY) || sessionStorage.getItem(CONNECTION_STORAGE_KEY);
-      if (raw) {
-        return JSON.parse(raw);
-      }
-    } catch {
-      // ignore
-    }
-    return null;
+      return raw ? JSON.parse(raw) as StoredConnectionState : null;
+    } catch { return null; }
   }
-
-  /**
-   * Set cached connection metadata
-   */
-  public static setConnection(conn: StoredConnectionState): void {
-    try {
-      localStorage.setItem(CONNECTION_STORAGE_KEY, JSON.stringify(conn));
-    } catch {
-      // ignore
-    }
+  public static setConnection(connection: StoredConnectionState): void {
+    try { localStorage.setItem(CONNECTION_STORAGE_KEY, JSON.stringify(connection)); }
+    catch { throw new Error('Browser storage is unavailable. Connection settings were not saved.'); }
   }
-
-  /**
-   * Clear connection metadata
-   */
   public static clearConnection(): void {
-    try {
-      localStorage.removeItem(CONNECTION_STORAGE_KEY);
-      sessionStorage.removeItem(CONNECTION_STORAGE_KEY);
-    } catch {
-      // ignore
-    }
+    try { localStorage.removeItem(CONNECTION_STORAGE_KEY); sessionStorage.removeItem(CONNECTION_STORAGE_KEY); } catch { /* ignore */ }
   }
-
-  /**
-   * Get masked representation of the active PAT for safe UI display (e.g. ••••••••9918)
-   * Never exposes plain text in UI, API responses, or logs
-   */
+  /** Opaque per-browser audit namespace; not a verified CAT identity or authentication mechanism. */
+  public static getClientId(): string {
+    const valid = (value: string | null) => Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+    const existing = localStorage.getItem(CLIENT_ID_STORAGE_KEY);
+    if (valid(existing)) return existing as string;
+    const created = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    localStorage.setItem(CLIENT_ID_STORAGE_KEY, created);
+    return created;
+  }
   public static getMaskedPat(): string | null {
-    const pat = this.getPat();
+    const pat = this.getPat()?.trim();
     if (!pat) return null;
-    const trimmed = pat.trim();
-    if (trimmed.length <= 4) return '••••' + trimmed;
-    return '••••••••' + trimmed.slice(-4);
+    return pat.length <= 4 ? '••••' + pat : '••••••••' + pat.slice(-4);
   }
-
-  /**
-   * Disconnect completely: wipes PAT from localStorage, metadata, and resets UI state
-   */
-  public static disconnect(): void {
-    this.clearPat();
-    this.clearConnection();
-  }
+  public static disconnect(): void { this.clearPat(); this.clearConnection(); }
 }

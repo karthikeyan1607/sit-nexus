@@ -6,7 +6,6 @@ import {
   WorkItemStory, 
   ProjectTagConfig 
 } from '../types';
-import { INITIAL_RESOURCES } from '../data/mockAdoData';
 import { normalize } from './normalize';
 
 const RESOURCE_MASTER_STORAGE_KEY = 'sit_nexus_resource_master';
@@ -79,11 +78,8 @@ export function clearStoredResourceMaster(): void {
 }
 
 export function loadResourceMaster(): ResourceRecord[] {
-  const stored = getStoredResourceMaster();
-  if (stored && stored.length > 0) {
-    return stored;
-  }
-  return INITIAL_RESOURCES;
+  // Shared Resource Master is loaded from the authenticated backend, never fixture data.
+  return getStoredResourceMaster() || [];
 }
 
 export function saveResourceMaster(resources: ResourceRecord[]): void {
@@ -92,7 +88,7 @@ export function saveResourceMaster(resources: ResourceRecord[]): void {
 
 export function resetResourceMasterToDefault(): ResourceRecord[] {
   clearStoredResourceMaster();
-  return INITIAL_RESOURCES;
+  return [];
 }
 
 /**

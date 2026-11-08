@@ -72,7 +72,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   dynamicRegions,
   totalMasterCount,
   availableProjects,
-  availableAreaPaths = ['CAT Digital', 'SIT', 'SIT\\India', 'SIT\\Europe', 'SIT\\USA'],
+  availableAreaPaths = [],
   availableIterationPaths = [],
   warnings = [],
   resources,
@@ -224,6 +224,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onChange={(areaPath) => onChangeFilter({ areaPath })}
               showLabel={true}
               id="dashboard-area-path-select"
+              additionalOptions={availableAreaPaths}
             />
           </div>
 

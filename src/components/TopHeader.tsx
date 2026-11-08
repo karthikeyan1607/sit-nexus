@@ -12,8 +12,6 @@ interface TopHeaderProps {
   activeTab: MainNavTab;
   currentSprint?: string;
   activeManager: ManagerProfileDTO;
-  dataSource?: 'mock' | 'azure';
-  onToggleMode?: () => void;
   onOpenSettings: () => void;
   onTriggerEasterEgg?: () => void;
   isSidebarCollapsed: boolean;
@@ -24,8 +22,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   activeTab,
   currentSprint,
   activeManager,
-  dataSource = 'mock',
-  onToggleMode,
   onOpenSettings,
   onTriggerEasterEgg,
   isSidebarCollapsed,
@@ -105,15 +101,15 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       {/* Right: Azure DevOps Connection Status */}
       <div className="flex items-center gap-2.5 text-xs font-mono">
         
-        {/* Real Azure DevOps Indicator */}
+        {/* Azure DevOps Connection */}
         <button
           type="button"
           onClick={onOpenSettings}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] border font-bold transition-all duration-150 ease-out active:scale-[0.98] cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-          title="SIT Nexus Real Azure DevOps REST API Integration"
+          title="Azure DevOps connection settings"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-          <span className="hidden sm:inline">REAL AZURE DEVOPS</span>
+          <span className="hidden sm:inline">AZURE DEVOPS</span>
           <span className="sm:hidden">ADO</span>
         </button>
 

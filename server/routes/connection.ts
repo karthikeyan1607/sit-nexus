@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { db } from '../db';
 import { adoService } from '../adoService';
 
 const router = Router();
@@ -12,8 +11,8 @@ const router = Router();
  * 
  * CRITICAL SECURITY RULE:
  * - NEVER return the PAT in the response.
- * - NEVER store the PAT in PostgreSQL/database or .env.
- * - The browser temporarily holds the PAT in sessionStorage for the active session.
+ * - NEVER store the PAT in backend persistence or .env.
+ * - The requesting manager retains the PAT in browser localStorage per product requirements.
  */
 router.post('/validate', async (req: Request, res: Response) => {
   const { organization, project, pat } = req.body;
@@ -72,14 +71,7 @@ router.post('/validate', async (req: Request, res: Response) => {
     });
   }
 
-  // Update default manager organization & project in database (NO PAT SAVED)
-  const activeManager = db.getActiveManager();
-  activeManager.organization = org;
-  activeManager.project = proj;
-  if (req.body.areaPath && String(req.body.areaPath).trim()) {
-    activeManager.areaPath = String(req.body.areaPath).trim();
-  }
-  db.upsertManager(activeManager);
+  // Connection configuration is kept in the requesting browser; this endpoint only validates the supplied PAT.
 
   // Return connection result - NEVER return the PAT!
   res.json({
@@ -96,49 +88,12 @@ router.post('/validate', async (req: Request, res: Response) => {
 
 /**
  * GET /api/connection/status (Section 19)
- * Returns current metadata and data source mode
+ * Returns current Azure DevOps connection metadata
  */
-router.get('/status', (req: Request, res: Response) => {
-  const activeManager = db.getActiveManager();
-  const dataSource = db.getDataSource();
-
-  res.json({
-    success: true,
-    data: {
-      organization: activeManager.organization || 'caterpillar',
-      project: activeManager.project || 'CAT Digital',
-      areaPath: activeManager.areaPath || 'CAT Digital',
-      dataSource,
-      manager: {
-        id: activeManager.id,
-        name: activeManager.name,
-        email: activeManager.email,
-        role: activeManager.role,
-        region: activeManager.region || 'All'
-      }
-    }
-  });
-});
-
-/**
- * POST /api/connection/mode (Section 20 & 21: MOCK MODE vs REAL AZURE DEVOPS MODE)
- */
-router.post('/mode', (req: Request, res: Response) => {
-  const { mode } = req.body;
-  if (mode !== 'mock' && mode !== 'azure') {
-    return res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_MODE', message: 'Mode must be either "mock" or "azure".' }
-    });
-  }
-
-  db.setDataSource(mode);
-  res.json({
-    success: true,
-    data: {
-      dataSource: mode,
-      message: `SIT Nexus operating in ${mode === 'azure' ? 'REAL AZURE DEVOPS' : 'MOCK'} MODE.`
-    }
+router.get('/status', (_req: Request, res: Response) => {
+  return res.status(410).json({
+    success: false,
+    error: { code: 'BROWSER_LOCAL_CONNECTION_STATE', message: 'Connection state is maintained independently in each browser.' },
   });
 });
 

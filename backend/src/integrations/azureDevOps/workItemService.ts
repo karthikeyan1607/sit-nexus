@@ -143,6 +143,48 @@ export class WorkItemService {
   }
 
   /**
+   * Update supported Azure DevOps work-item fields using JSON Patch.
+   * Unsupported app-only annotations must be persisted separately, not silently discarded.
+   */
+  public async updateWorkItemFields(
+    id: number,
+    fields: Partial<Pick<AzureWorkItemFields, 'System.State' | 'Microsoft.VSTS.Scheduling.StoryPoints'>>,
+    pat: string
+  ): Promise<AzureWorkItem> {
+    const patchBody: Array<{ op: 'add'; path: string; value: string | number }> = [];
+
+    if (fields['System.State'] !== undefined) {
+      patchBody.push({
+        op: 'add',
+        path: '/fields/System.State',
+        value: fields['System.State'],
+      });
+    }
+    if (fields['Microsoft.VSTS.Scheduling.StoryPoints'] !== undefined) {
+      patchBody.push({
+        op: 'add',
+        path: '/fields/Microsoft.VSTS.Scheduling.StoryPoints',
+        value: Number(fields['Microsoft.VSTS.Scheduling.StoryPoints']),
+      });
+    }
+
+    if (patchBody.length === 0) {
+      throw new Error('At least one supported Azure DevOps field must be provided.');
+    }
+
+    return this.client.request<AzureWorkItem>(
+      `_apis/wit/workitems/${id}`,
+      pat,
+      {
+        method: 'PATCH',
+        body: patchBody,
+        contentType: 'application/json-patch+json',
+        includeProject: false,
+      }
+    );
+  }
+
+  /**
    * Update work item state (Section 19 & 33)
    * Uses JSON Patch operation to update System.State.
    */

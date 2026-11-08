@@ -38,7 +38,6 @@ import {
   ManagerProfileDTO,
   SprintClosurePreviewDTO
 } from '../utils/api';
-import { AVAILABLE_SPRINTS } from '../data/mockAdoData';
 import { normalize } from '../utils/normalize';
 import { AreaPathSelect } from './common/AreaPathSelect';
 import { IterationPathSelect } from './common/IterationPathSelect';
@@ -70,6 +69,8 @@ interface SprintClosureViewProps {
   initialIterationPath?: string;
   initialAreaPath?: string;
   initialRegion?: string;
+  availableAreaPaths?: string[];
+  availableIterationPaths?: string[];
   onClosureCompleted: () => void;
 }
 
@@ -79,17 +80,19 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
   initialIterationPath,
   initialAreaPath,
   initialRegion,
+  availableAreaPaths = [],
+  availableIterationPaths = [],
   onClosureCompleted,
 }) => {
   // Filters: Exact Iteration Path, Region, Area Path (NO Project filter - covers ALL PROJECTS)
   const [selectedSprint, setSelectedSprint] = useState(
-    initialIterationPath || 'Cat Digital\\2026\\Sprint 20 (Sep 30 - Oct 13)'
+    initialIterationPath || ''
   );
   const [selectedRegion, setSelectedRegion] = useState(
     initialRegion && initialRegion !== 'All' ? initialRegion : 'All Regions'
   );
   const [selectedAreaPath, setSelectedAreaPath] = useState(
-    initialAreaPath || activeManager.areaPath || 'Cat Digital\\Platform\\System-Integration Testing\\P - SIT Energizers'
+    initialAreaPath || activeManager.areaPath || ''
   );
 
   // Preview state
@@ -149,9 +152,17 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
   }, [activeSubTab]);
 
   const fetchPreview = async () => {
+    setExecutionResult(null);
+    if (!selectedSprint || !selectedAreaPath) {
+      setPreviewData(null);
+      setSelectedStoryIds([]);
+      setIsLoadingPreview(false);
+      setPreviewError('Connect to Azure DevOps and select a live Iteration Path and Area Path to preview sprint closure.');
+      return;
+    }
+
     setIsLoadingPreview(true);
     setPreviewError(null);
-    setExecutionResult(null);
 
     try {
       const data = await getClosurePreviewApi({
@@ -525,6 +536,7 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
                   label="Sprint / Iteration Path"
                   showLabel={true}
                   id="closure-sprint-select"
+                  additionalOptions={availableIterationPaths}
                 />
               </div>
 
@@ -540,9 +552,9 @@ export const SprintClosureView: React.FC<SprintClosureViewProps> = ({
                   className="w-full h-9 px-3 bg-white border border-[#D1D5DB] rounded-lg text-xs text-[#1F2937] font-semibold focus:border-[#FFCD11] focus:ring-1 focus:ring-[#FFCD11] outline-none cursor-pointer transition-all"
                 >
                   <option value="All Regions">All Regions</option>
-                  <option value="India">India</option>
-                  <option value="Europe">Europe</option>
-                  <option value="USA">USA</option>
+                  {dynamicRegions.map(({ region }) => (
+                    <option key={region} value={region}>{region}</option>
+                  ))}
                 </select>
               </div>
 

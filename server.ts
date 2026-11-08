@@ -1,20 +1,25 @@
-import { fileURLToPath } from 'url';
+import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
-import dotenv from 'dotenv';
-import authRoutes from './server/routes/auth';
 import connectionRoutes from './server/routes/connection';
-import resourceRoutes from './server/routes/resources';
-import projectRoutes from './server/routes/projects';
-import queryRoutes from './server/routes/query';
+import queryRoutes, { handleGetSprints, handleGetAreaPaths } from './server/routes/query';
 import { db } from './server/db';
+import { createBrowserAuditIdentity } from './server/corporate/browserAuditIdentity';
 
-
-dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
+// Production audit history must use a CAT-managed persistent volume. This does not
+// authenticate CAT employees; CAT network/VDI access restrictions are enforced by infrastructure.
+if (isProduction && (!process.env.SIT_NEXUS_AUDIT_FILE || !path.isAbsolute(process.env.SIT_NEXUS_AUDIT_FILE))) {
+  throw new Error('SIT Nexus production startup requires SIT_NEXUS_AUDIT_FILE to point to a CAT-managed persistent volume.');
+}
+const auditSessionSecret = process.env.SIT_NEXUS_AUDIT_SESSION_SECRET || (isProduction ? '' : 'sit-nexus-local-development-audit-secret-change-before-deploy');
+if (isProduction && Buffer.byteLength(auditSessionSecret, 'utf8') < 32) {
+  throw new Error('SIT_NEXUS_AUDIT_SESSION_SECRET must be configured with at least 32 bytes in production.');
+}
+if (isProduction) db.assertWritable();
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
@@ -27,24 +32,24 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// API Routes
+// Signed HttpOnly browser-profile identity partitions each manager's closure audit history.
+app.use('/api', createBrowserAuditIdentity(auditSessionSecret, isProduction));
+app.get('/api/audit/session', (_req: Request, res: Response) => res.json({ success: true }));
+
+// Connection validation is stateless. Resource Master and project settings remain browser-local.
 app.use('/api/connection', connectionRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/resources', resourceRoutes);
-app.use('/api/projects', projectRoutes);
 app.use('/api/query', queryRoutes);
 
-// Direct Specification Endpoints (Section 17: /api/sprints, /api/area-paths, /api/audit, /api/sprint-close)
-app.use('/api/sprints', (req: Request, res: Response) => {
-  res.json({ success: true, sprints: db.getAvailableSprints() });
-});
+// Direct specification endpoints. Iterations are fetched from Azure DevOps only;
+// failures remain explicit and never fall back to the JSON store.
+app.get('/api/sprints', handleGetSprints);
 
-app.use('/api/area-paths', (req: Request, res: Response) => {
-  res.json({ success: true, areaPaths: db.getAvailableAreaPaths() });
-});
+app.get('/api/area-paths', handleGetAreaPaths);
 
 app.use('/api/audit', (req: Request, res: Response) => {
-  res.json({ success: true, history: db.getClosureAuditLog(), data: db.getClosureAuditLog() });
+  const ownerId = String(res.locals.auditOwnerId || '');
+  const history = db.getClosureAuditLog(ownerId);
+  return res.json({ success: true, history, data: history });
 });
 
 app.use('/api/sprint-close', queryRoutes);
