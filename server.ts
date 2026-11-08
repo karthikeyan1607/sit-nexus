@@ -19,6 +19,7 @@ const auditSessionSecret = process.env.SIT_NEXUS_AUDIT_SESSION_SECRET || (isProd
 if (isProduction && Buffer.byteLength(auditSessionSecret, 'utf8') < 32) {
   throw new Error('SIT_NEXUS_AUDIT_SESSION_SECRET must be configured with at least 32 bytes in production.');
 }
+if (isProduction) db.assertWritable();
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
