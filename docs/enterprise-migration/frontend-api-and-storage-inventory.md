@@ -1,93 +1,83 @@
 # SIT Nexus — Frontend API and Browser Storage Inventory
 
-Reviewed on: 2026-11-08
-Branch: `migration/corporate-onprem-day1`
-Source of truth for this inventory: current `src/utils/api.ts`, `src/services/credentialService.ts`, `src/utils/storage.ts`, `src/utils/resourceMaster.ts`, and current Express route mounts.
+Reviewed: 2026-11-08
+Branch: migration/corporate-onprem-day1
 
-## 1. Current API contract
+## 1. Data ownership
 
-The browser API wrapper uses `API_BASE = '/api'`. The existing UI relies on the following routes; migrate the frontend and server together so that existing screens do not break during the transition.
-
-| Current endpoint | Method | Purpose | Target migration notes |
-|---|---|---|---|
-| `/api/connection/validate` | POST | Validate Azure DevOps organization, project and PAT | Accept PAT transiently; do not persist or echo it; bind validated credential to authenticated user session |
-| `/api/auth/status` | GET | Current manager/ADO status | Replace with `/api/v1/me` plus per-user ADO connection status |
-| `/api/auth/managers` | GET | Manager list / global active manager | Remove manager switching; use verified corporate identity and server-authorized user directory |
-| `/api/auth/managers` | POST | Create manager profile | Replace with admin-provisioned user/role grant workflow |
-| `/api/auth/managers/switch` | POST | Change global manager | Delete; user identity must come from verified SSO, never client selection |
-| `/api/auth/connect` | POST | Connect Azure DevOps and validate PAT | Move to authenticated per-user credential API; do not accept a target manager ID |
-| `/api/auth/mode` | POST | Switch mock/Azure source | Delete; production must have no mock mode |
-| `/api/resources` | GET/POST | Read or add resource master record | Authenticate and enforce region/project/admin permissions |
-| `/api/resources/replace` | POST | Replace resource master | Preserve explicit import/replace behavior; validate file rows and scope to authorized regions |
-| `/api/resources/:id` | PUT/DELETE | Update/delete a resource | Enforce authorized region and audit actor |
-| `/api/resources/reset` | POST | Restore fabricated factory baseline | Delete permanently; no seeded/factory mock resource data |
-| `/api/projects` | GET/POST | List/create project tags | Scope project visibility/configuration to authorized user/project |
-| `/api/projects/toggle-hide` | POST | Hide/show project tag | Preserve as user/project configuration |
-| `/api/projects/:name` | DELETE | Remove project tag from visibility | Preserve only as authorized configuration action |
-| `/api/projects/restore-all` | POST | Restore project visibility | Scope to user/project; no global mutable state |
-| `/api/query` | POST | Execute sprint/work-item query | Use verified principal's server-side PAT; authorize project/region/iteration/area scope |
-| `/api/query/stories` | GET | Filter stories | Source work items from live ADO; no database/mock story fallback |
-| `/api/query/stories/:id` | PATCH | Update story metadata/status | Use live ADO update operation; require explicit work-item update permission |
-| `/api/query/sprint-close/preview` | POST | Preview sprint closure | Preserve query semantics; authorize target scope and return typed live ADO errors |
-| `/api/query/sprint-close/execute` | POST | Execute sprint closure | Require write permission; transactionally persist audit metadata around ADO execution |
-| `/api/sprints` | GET | Iteration dropdown | Replace standardized fallback with live ADO iteration query; explicit error when unavailable |
-| `/api/area-paths` | GET | Area path dropdown | Retrieve from ADO under authenticated connection; do not use fabricated defaults |
-| `/api/query/sprint-close/history` | GET | Closure audit history | Read only records authorized for the verified principal |
-| `/api/audit` | GET | Legacy audit output | Consolidate into authorized audit-history API |
-
-Note: the Express server also mounts `/api/query` and `/api/sprint-close` using the same query router, and separately mounts simple database-backed `/api/sprints`, `/api/area-paths`, and `/api/audit` handlers. Confirm route precedence and retire duplicate aliases during the v1 migration.
-
-## 2. Current browser storage keys
-
-| Key | Current content | Risk / target |
+| Data | Owner / source | Persistence |
 |---|---|---|
-| `sit_nexus_ado_pat` | Azure DevOps PAT | Critical: plaintext persistent browser storage. Remove; server-side per-user secret reference or session-only memory design approved by CAT |
-| `sit_nexus_ado_conn` | ADO connection metadata | May be retained only as non-authoritative UI cache; server is source of truth |
-| `sit_nexus_stories_v1` | Work-item/story snapshot | Must not be a source of truth; work items come from live Azure DevOps |
-| `sit_nexus_ado_config_v1` | Organization/project/PAT-like config and connection state | Remove PAT and fabricated connection defaults; organization/project should come from approved config |
-| `sit_nexus_resource_master` | Resource master data | Replace with authenticated server-side shared master data; do not seed from constants |
-| `sit_nexus_project_tags_v1` | Project tag visibility/config | Move to user/project-scoped persistence |
+| PAT | Individual manager | Browser localStorage |
+| Organization/project/connection metadata | Individual manager | Browser localStorage |
+| Resource Master | Individual manager | Browser localStorage |
+| Project/tag visibility | Individual manager | Browser localStorage |
+| Filters and UI preferences | Individual manager | Existing browser state/local storage where applicable |
+| Standup review progress | Individual manager | Browser localStorage, day-scoped |
+| Standup notes / blocked reasons | Individual manager | Browser localStorage |
+| Work items, assignments, state, story points | Azure DevOps | Azure DevOps is authoritative |
+| Iterations and Area Paths | Azure DevOps | Retrieved live |
+| Sprint Closure audit history | Current browser profile | Persistent backend audit file, partitioned by signed HttpOnly cookie |
 
-Additional legacy behavior: resource and story utilities import `INITIAL_RESOURCES` and `INITIAL_STORIES` when local storage is empty. These defaults must become honest empty/not-configured states. Do not migrate browser local storage automatically into production.
+## 2. Browser storage keys
 
-## 3. Current PAT flow and replacement
+| Key | Content |
+|---|---|
+| sit_nexus_ado_pat | Individual Azure DevOps PAT |
+| sit_nexus_ado_conn | Organization, project, area path and connection metadata |
+| sit_nexus_resource_master | Manager's Resource Master |
+| sit_nexus_project_tags_v1 | Manager's project/tag visibility |
+| sit_nexus_story_annotations_v1 | Standup notes and blocked reasons |
+| sit_nexus_standup_review_v1 | Daily standup review state |
+| sit_nexus_client_id | Opaque local UI/browser identifier; not server authentication |
 
-Current flow:
-1. User enters PAT in the browser.
-2. Browser sends the PAT to `/api/connection/validate` or `/api/auth/connect`.
-3. Browser saves PAT in `localStorage` under `sit_nexus_ado_pat`.
-4. `src/utils/api.ts` reads that token for query operations and forwards it in `x-ado-pat`.
-5. Server query route uses the header for Azure DevOps operations.
+The server separately issues a signed HttpOnly cookie named sit_nexus_audit_owner. It is not accessible to page JavaScript and scopes persistent audit history to that browser profile. The cookie is not a verified CAT employee identity.
 
-Target flow:
-1. User completes CAT-approved corporate authentication.
-2. Server resolves a verified user principal and authorization grants.
-3. User submits an individual ADO PAT over TLS to a protected credential endpoint.
-4. Server validates the PAT against the configured ADO organization/project.
-5. Server stores only an approved secret-vault reference or approved encrypted session credential; if neither is authorized, require per-session re-entry and memory-only retention.
-6. Browser calls query endpoints with its corporate session only; server retrieves that user's PAT internally.
-7. Disconnect/revocation clears the server-side reference/session credential and associated connection status.
-8. Logs, traces, browser storage and audit events never include PAT values or authorization headers.
+## 3. Backend endpoints
 
-## 4. Frontend migration sequence
+| Endpoint | Method | Purpose |
+|---|---|---|
+| /api/audit/session | GET | Bootstrap the signed HttpOnly browser audit cookie |
+| /api/connection/validate | POST | Validate a supplied PAT; server stores no credential |
+| /api/query | POST | Query live Azure DevOps using request PAT/config and browser Resource Master |
+| /api/sprints | GET | Retrieve live iterations from Azure DevOps |
+| /api/area-paths | GET | Retrieve live Area Paths from Azure DevOps |
+| /api/query/stories/:id | PATCH | Update supported work-item fields in Azure DevOps |
+| /api/query/sprint-close/preview | POST | Preview eligible stories from live Azure DevOps |
+| /api/query/sprint-close/execute | POST | Revalidate and execute eligible story closure; persist audit records |
+| /api/query/sprint-close/history | GET | Return audit history for the signed browser profile |
+| /api/audit | GET | Legacy alias for the same browser-scoped audit history |
+| /api/health | GET | Service health |
 
-1. Introduce a typed `/api/v1` client and typed error envelope while keeping existing view components unchanged.
-2. Add bootstrap loading from `GET /api/v1/me`; represent loading, unauthenticated, empty, not-connected and error states separately.
-3. Replace manager selection with the verified signed-in user and server-provided permissions.
-4. Migrate resource master and project-tag settings to authenticated server persistence.
-5. Migrate iterations, area paths and sprint queries to authenticated Azure DevOps server routes.
-6. Migrate sprint closure preview, execute and audit history without changing business rules.
-7. Remove browser stories/resource master as authoritative datasets and remove localStorage PAT.
-8. Delete mock mode controls, fake seeded stories and fallback data paths without redesigning the dashboard.
+Legacy /api/auth, /api/resources and /api/projects server routes are no longer part of the active application contract. The frontend helpers for those modules now read/write browser-local state.
 
-## 5. Critical release blockers
+## 4. PAT lifecycle
 
-- Legacy routes currently remain mounted without verified identity and route-level authorization.
-- JSON file persistence and global active-manager state remain in `server/db.ts`.
-- The current runtime database is not the SQL schema in `database/migrations/001_initial_schema.sql`.
-- Browser PAT is persisted and forwarded on each request.
-- Mock data is still loaded by backend and frontend initialization paths.
-- Some Azure failures fall back to standardized database sprint values or simulated success in validation paths.
-- CAT SSO/identity integration, SQL engine/version, credential vault and on-prem network are not yet confirmed.
+1. Manager enters PAT in Settings or the connection modal.
+2. Backend validates PAT against the configured Azure DevOps organization/project.
+3. On successful validation, browser stores PAT and non-secret connection metadata in localStorage.
+4. Each subsequent Azure DevOps request sends the PAT in an HTTPS header.
+5. Backend uses it only for that request; it does not save the PAT to audit storage or application persistence.
+6. Manager can replace the PAT when it expires or disconnect and clear it.
+7. Azure DevOps authentication errors are surfaced; no fake data is returned.
 
-The production startup guard on this branch intentionally blocks `NODE_ENV=production` until the entire corporate migration is implemented. A successful frontend build does not make the current branch production-ready.
+Security limitation: localStorage is readable by same-origin JavaScript. CAT security approval and strong XSS protections are required before production.
+
+## 5. Audit persistence and hosting assumptions
+
+- Audit records are stored in SIT_NEXUS_AUDIT_FILE, which must be on a CAT-managed persistent volume.
+- SIT_NEXUS_AUDIT_SESSION_SECRET must be a stable secret of at least 32 bytes.
+- The cookie is HttpOnly, SameSite=Strict and Secure in production.
+- A different browser profile or computer gets a different audit namespace.
+- Clearing the browser cookie loses access to the prior namespace; the records remain stored.
+- Current JSON persistence assumes one application instance. Multi-instance deployment requires shared transactional persistence.
+- CAT network/VDI controls must restrict access to the application. The audit cookie is not SSO or employee authentication.
+
+## 6. Verification still required
+
+- End-to-end two-browser test with different PATs and independent Resource Masters.
+- PAT expiry/replacement and permissions.
+- Full story annotations and standup persistence behavior after browser restart.
+- Audit persistence after server restart/redeployment.
+- Cookie isolation and behavior after clearing browser data.
+- 50-user concurrency and CAT hosting topology.
+- Security approval for browser-local PAT storage.
