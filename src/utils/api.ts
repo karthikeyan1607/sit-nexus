@@ -381,7 +381,7 @@ export async function executeClosureApi(params: {
 export async function getSprintsApi(): Promise<{
   success: boolean;
   source?: string;
-  sprints: { id: string; name: string; path: string; startDate?: string; endDate?: string }[];
+  sprints: { id: string; name: string; path: string; startDate?: string; endDate?: string; isCurrent?: boolean }[];
 }> {
   const res = await fetch(`${API_BASE}/sprints`, {
     headers: getAuthHeaders(),
