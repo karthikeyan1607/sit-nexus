@@ -26,10 +26,16 @@ import {
   ManagerProfileDTO
 } from './utils/api';
 
-import { exportStoriesToCsv } from './utils/storage';
+import {
+  exportStoriesToCsv, loadStoryAnnotations, saveStoryAnnotations,
+  loadStandupReviewState, setStandupResourceReviewed, resetStandupReviewState
+} from './utils/storage';
 import { 
-  clearStoredResourceMaster, 
-  getDynamicRegions 
+  clearStoredResourceMaster,
+  getDynamicRegions,
+  discoverProjectsFromStories,
+  loadProjectTagConfigs,
+  saveProjectTagConfigs
 } from './utils/resourceMaster';
 import { MainNavTab } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -147,9 +153,6 @@ export default function App() {
           setActiveManager(authData.activeManager);
         }
 
-        // Remove stale browser copies; the authenticated backend is authoritative.
-        clearStoredResourceMaster();
-
         const [areaData, sprintData, resourceData, projectData] = await Promise.all([
           getAreaPathsApi().catch(() => null),
           getSprintsApi().catch(() => null),
@@ -221,14 +224,33 @@ export default function App() {
         areaPath: currentFilter.areaPath || filter.areaPath,
       });
 
-      setStories(response.stories);
-      setResourceGroups(response.resources);
+      const annotations = loadStoryAnnotations();
+      const reviewedNames = new Set(loadStandupReviewState());
+      const storiesWithAnnotations = response.stories.map((story) => ({
+        ...story,
+        ...(annotations[String(story.id)] || {}),
+      }));
+      const groupsWithLocalReview = response.resources.map((group) => ({
+        ...group,
+        isReviewed: reviewedNames.has(group.name),
+        stories: group.stories.map((story) => ({
+          ...story,
+          ...(annotations[String(story.id)] || {}),
+        })),
+      }));
+      setStories(storiesWithAnnotations);
+      setResourceGroups(groupsWithLocalReview);
+
+      const discoveredTags = discoverProjectsFromStories(response.stories);
+      const localProjectConfigs = loadProjectTagConfigs(discoveredTags);
+      saveProjectTagConfigs(localProjectConfigs);
+      setProjectConfigs(localProjectConfigs);
 
       if (response.diagnostics) {
         setQueryDiagnostics(response.diagnostics);
       }
 
-      const reviewedCount = response.resources.filter((r) => r.isReviewed).length;
+      const reviewedCount = groupsWithLocalReview.filter((r) => r.isReviewed).length;
 
       setSummaryMetrics({
         ...response.summary,
@@ -328,6 +350,7 @@ export default function App() {
     const targetGroup = resourceGroups.find((r) => r.name === resourceName);
     const newReviewed = targetGroup ? !targetGroup.isReviewed : true;
 
+    setStandupResourceReviewed(resourceName, newReviewed);
     setResourceGroups((prev) =>
       prev.map((g) => (g.name === resourceName ? { ...g, isReviewed: newReviewed } : g))
     );
@@ -346,6 +369,8 @@ export default function App() {
       await updateStoryApi(updatedStory.id, {
         status: updatedStory.status,
         storyPoints: updatedStory.storyPoints,
+      });
+      saveStoryAnnotations(updatedStory.id, {
         standupNotes: updatedStory.standupNotes,
         blockedReason: updatedStory.blockedReason,
       });
@@ -360,6 +385,7 @@ export default function App() {
 
   // Reset standup checks
   const handleResetDailyReview = () => {
+    resetStandupReviewState();
     setResourceGroups((prev) => prev.map((g) => ({ ...g, isReviewed: false })));
     setSummaryMetrics((prev) => ({ ...prev, reviewedCount: 0 }));
     showToast('Daily standup review checkmarks reset.');
@@ -378,7 +404,7 @@ export default function App() {
       showToast(`Resource Master replaced successfully with ${data.resources.length} resources.`);
       handleRunQuery();
     } catch (err: unknown) {
-      showToast('Failed to replace Resource Master on the server. No local-only copy was saved.');
+      showToast('Failed to save Resource Master in this browser.');
     }
   };
 
@@ -391,7 +417,7 @@ export default function App() {
       });
       showToast(`Updated resource "${updated.name}"`);
     } catch (err) {
-      showToast('Failed to update resource on server.');
+      showToast('Failed to update resource in this browser.');
     }
   };
 
@@ -409,7 +435,7 @@ export default function App() {
       showToast('Resource deleted from Resource Master.');
       handleRunQuery();
     } catch (err) {
-      showToast('Failed to delete resource.');
+      showToast('Failed to delete resource from this browser.');
     }
   };
 
@@ -422,20 +448,19 @@ export default function App() {
       });
       showToast(`Resource "${res.resource.name}" added to ${res.resource.region} team.`);
     } catch (err) {
-      showToast('Failed to add resource.');
+      showToast('Failed to add resource in this browser.');
     }
   };
 
   const handleResetResourceMaster = async () => {
-    if (!confirm('Clear the Resource Master? This removes the current shared master list.')) return;
+    if (!confirm('Clear your browser-local Resource Master? This affects only this browser.')) return;
     try {
-      clearStoredResourceMaster();
       await replaceResourcesApi([]);
       setResourceMaster([]);
       setDynamicRegions([]);
       showToast('Resource Master cleared.');
     } catch (err) {
-      showToast('Failed to clear Resource Master on the server.');
+      showToast('Failed to clear this browser Resource Master.');
     }
   };
 
@@ -493,6 +518,10 @@ export default function App() {
 
   // Connection success callback from modal
   const handleConnectionSuccess = (mgr: ManagerProfileDTO) => {
+    const currentConnection = CredentialService.getConnection();
+    if (currentConnection) {
+      CredentialService.setConnection({ ...currentConnection, areaPath: mgr.areaPath || currentConnection.areaPath || '' });
+    }
     setActiveManager(mgr);
     showToast(`Azure DevOps connection verified for ${mgr.name}.`);
     handleRunQuery();
