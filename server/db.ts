@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 export interface StoredResource {
   id: string; name: string; normalized_name?: string; region: string; email: string;
@@ -60,6 +61,15 @@ export class AuditStore {
     }
   }
 
+  assertWritable(): void {
+    const directory = path.dirname(this.filePath);
+    fs.mkdirSync(directory, { recursive: true });
+    const probePath = `${this.filePath}.${process.pid}.${randomUUID()}.probe`;
+    const descriptor = fs.openSync(probePath, 'wx', 0o600);
+    fs.closeSync(descriptor);
+    fs.unlinkSync(probePath);
+  }
+
   private persist(): void {
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
     const temporaryPath = `${this.filePath}.${process.pid}.tmp`;
@@ -76,7 +86,12 @@ export class AuditStore {
   addClosureAuditRecord(record: StoredClosureAudit): void {
     if (!record.manager_id) throw new Error('Audit owner is required.');
     this.records.unshift(record);
-    this.persist();
+    try {
+      this.persist();
+    } catch (error) {
+      this.records.shift();
+      throw error;
+    }
   }
 }
 export const db = new AuditStore();
