@@ -335,7 +335,7 @@ router.post(['/sprint-close/preview', '/preview'], async (req: Request, res: Res
         region: targetRegion,
       },
       resourceMaster,
-      pat ? pat.trim() : undefined
+      pat ? pat.trim() : ''
     );
 
     return res.json({
@@ -354,7 +354,7 @@ router.post(['/sprint-close/preview', '/preview'], async (req: Request, res: Res
       ineligibleStories: previewResult.ineligibleStories,
       diagnostics: previewResult.diagnostics,
       wiql: previewResult.wiql,
-      managerCanUpdate: Boolean(activeManager.permissions?.workItemUpdate ?? true),
+      managerCanUpdate: Boolean(activeManager.permissions?.workItemUpdate),
       dataSource: previewResult.dataSource,
     });
   } catch (err: unknown) {
@@ -380,7 +380,7 @@ router.post(['/sprint-close/execute', '/execute'], async (req: Request, res: Res
   const resourceMaster = db.getResources() || [];
 
   // Permission Check
-  if (activeManager.permissions && !activeManager.permissions.workItemUpdate) {
+  if (!activeManager.permissions?.workItemUpdate) {
     return res.status(403).json({
       success: false,
       error: {
