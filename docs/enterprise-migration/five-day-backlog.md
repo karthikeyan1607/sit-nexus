@@ -26,16 +26,21 @@ Exit: complete dependency map and approved technical contracts; no unsafe produc
 Exit: no global active manager and no JSON-file runtime persistence. **Not yet met:** legacy runtime still uses the JSON store/global manager; replacement is blocked on DB selection and staged route migration.
 
 ## Day 3 — Individual PAT and Azure DevOps-only data
-- [ ] Replace browser localStorage PAT storage and x-ado-pat forwarding.
-- [ ] Implement per-user PAT validation, lifecycle, disconnect and expiry handling.
-- [ ] Bind each ADO request to the authenticated user's credential.
-- [ ] Remove mock mode routes and data-source switching.
-- [ ] Remove mock imports, seeded stories/resources/tags and factory reset endpoints.
-- [ ] Remove fabricated connection defaults and standardized sprint fallback.
-- [ ] Ensure network, timeout, 401, 403 and 5xx failures are explicit and never return simulated success.
-- [ ] Add tests for invalid PAT, revoked PAT, missing PAT, timeout and cross-user credential isolation.
+- [ ] Replace browser localStorage PAT storage and x-ado-pat forwarding (still pending).
+- [ ] Implement per-user PAT validation, lifecycle, disconnect and expiry handling (still pending; requires CAT-approved vault/session design).
+- [ ] Bind each ADO request to the authenticated user's credential (still pending; current legacy flow still forwards PAT from browser).
+- [ ] Remove all mock mode routes and data-source switching (still pending).
+- [ ] Remove all mock imports, seeded stories/resources/tags and factory reset endpoints (still pending).
+- [x] Remove simulated success from Azure DevOps PAT validation on network/proxy/timeout errors.
+- [x] Remove standardized/fabricated iteration fallback from the Azure iteration service; empty ADO response stays empty and failures propagate.
+- [x] Route `/api/sprints` through live Azure DevOps; missing PAT/config and upstream errors are explicit.
+- [x] Make sprint query live-only with PAT and explicit Area Path + Iteration Path; no mock branch or database story fallback.
+- [x] Make sprint closure preview/execution require PAT; remove mock preview data and local mock update fallback; deny update when permission is missing.
+- [x] Sanitize Azure DevOps upstream error details before returning errors to clients.
+- [x] Add regression tests covering empty iteration response, upstream network failure, and live iteration mapping.
+- [ ] Run tests for invalid/revoked PAT, timeout, API permissions and per-user credential isolation (not yet covered end-to-end).
 
-Exit: production data comes only from live Azure DevOps and explicitly managed master/configuration data.
+Exit: **not met**. Several high-risk paths remain: browser PAT localStorage and `x-ado-pat` forwarding, global active manager/JSON store, mock data initialization and mock routes, non-live story reads/updates, and database-backed sprint-closure audit persistence.
 
 ## Day 4 — Frontend/API migration while preserving UX
 - [ ] Add typed `/api/v1/me` and connection APIs.
