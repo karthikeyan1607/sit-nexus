@@ -216,24 +216,13 @@ export class AzureDevOpsService {
         }
       };
     } catch (err: unknown) {
-      const isNetworkError = err instanceof Error && (err.name === 'AbortError' || err.message.includes('fetch') || err.message.includes('ENOTFOUND'));
-      if (isNetworkError) {
-        return {
-          isValid: true,
-          message: 'Verified locally (Azure DevOps Sandbox Mode active). Organization and project credentials valid.',
-          permissions: {
-            orgAccess: true,
-            projectAccess: true,
-            workItemRead: true,
-            workItemUpdate: true,
-          },
-          details: 'Simulated enterprise proxy validation.'
-        };
-      }
-
+      // A network/proxy/timeout failure is never evidence that a PAT is valid.
+      const message = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')
+        ? 'Azure DevOps validation timed out. Check corporate network/proxy connectivity and retry.'
+        : 'Azure DevOps could not be reached. Check corporate network/proxy connectivity and retry.';
       return {
         isValid: false,
-        message: 'Unable to retrieve Azure DevOps data. Please verify your PAT and network connectivity.',
+        message,
         permissions: { orgAccess: false, projectAccess: false, workItemRead: false, workItemUpdate: false }
       };
     }
