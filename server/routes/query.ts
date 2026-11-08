@@ -9,7 +9,7 @@ import { AzureClient, IterationService, WorkItemService } from '../../backend/sr
 
 const router = Router();
 
-const getBrowserOwnerId = (req: Request): string => String(req.headers['x-sit-nexus-client-id'] || '').trim();
+const getBrowserOwnerId = (res: Response): string => String(res.locals.auditOwnerId || '').trim();
 const isValidBrowserOwnerId = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 const getResourceMaster = (value: unknown): StoredResource[] =>
@@ -469,7 +469,7 @@ router.post(['/sprint-close/preview', '/preview'], async (req: Request, res: Res
 router.post(['/sprint-close/execute', '/execute'], async (req: Request, res: Response) => {
   const { sprint, iterationPath, areaPath, region, storyIds = [] } = req.body;
   const resourceMaster = getResourceMaster(req.body?.resourceMaster);
-  const clientId = getBrowserOwnerId(req);
+  const clientId = getBrowserOwnerId(res);
   if (!isValidBrowserOwnerId(clientId)) {
     return res.status(400).json({
       success: false,
