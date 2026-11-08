@@ -6,7 +6,7 @@ import authRoutes from './server/routes/auth';
 import connectionRoutes from './server/routes/connection';
 import resourceRoutes from './server/routes/resources';
 import projectRoutes from './server/routes/projects';
-import queryRoutes, { handleGetSprints } from './server/routes/query';
+import queryRoutes, { handleGetSprints, handleGetAreaPaths } from './server/routes/query';
 import { db } from './server/db';
 import { createCorporateRoutes } from './server/corporate/routes';
 
@@ -50,9 +50,7 @@ app.use('/api/query', queryRoutes);
 // failures remain explicit and never fall back to the JSON store.
 app.get('/api/sprints', handleGetSprints);
 
-app.use('/api/area-paths', (req: Request, res: Response) => {
-  res.json({ success: true, areaPaths: db.getAvailableAreaPaths() });
-});
+app.get('/api/area-paths', handleGetAreaPaths);
 
 app.use('/api/audit', (req: Request, res: Response) => {
   res.json({ success: true, history: db.getClosureAuditLog(), data: db.getClosureAuditLog() });
