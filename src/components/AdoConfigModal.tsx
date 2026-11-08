@@ -35,8 +35,8 @@ export const AdoConfigModal: React.FC<AdoConfigModalProps> = ({
   const [activeManager, setActiveManager] = useState<ManagerProfileDTO | null>(null);
 
   // Form states
-  const [org, setOrg] = useState('caterpillar');
-  const [project, setProject] = useState('CAT Digital');
+  const [org, setOrg] = useState('');
+  const [project, setProject] = useState('');
   const [patInput, setPatInput] = useState('');
   const [isReplacingPat, setIsReplacingPat] = useState(false);
 
@@ -60,8 +60,8 @@ export const AdoConfigModal: React.FC<AdoConfigModalProps> = ({
       const data = await getAuthStatus();
       if (data?.activeManager) {
         setActiveManager(data.activeManager);
-        setOrg(data.activeManager.organization || 'caterpillar');
-        setProject(data.activeManager.project || 'CAT Digital');
+        setOrg(data.activeManager.organization || '');
+        setProject(data.activeManager.project || '');
       }
     } catch (err) {
       console.error('Failed to load auth status:', err);
@@ -69,7 +69,7 @@ export const AdoConfigModal: React.FC<AdoConfigModalProps> = ({
   };
 
   const isConnected = Boolean(activeManager?.isConnected || CredentialService.hasPat());
-  const maskedPat = CredentialService.getMaskedPat() || (isConnected ? '••••••••9918' : null);
+  const maskedPat = CredentialService.getMaskedPat();
 
   const handleValidateAndConnect = async () => {
     const token = patInput.trim();
@@ -100,9 +100,9 @@ export const AdoConfigModal: React.FC<AdoConfigModalProps> = ({
         });
 
         const updated: ManagerProfileDTO = {
-          id: activeManager?.id || 'mgr-1',
-          name: activeManager?.name || 'Karthikeyan',
-          region: activeManager?.region || 'All',
+          id: activeManager?.id || '',
+          name: activeManager?.name || '',
+          region: activeManager?.region || '',
           organization: res.data.organization,
           project: res.data.project,
           isConnected: true,
@@ -119,7 +119,7 @@ export const AdoConfigModal: React.FC<AdoConfigModalProps> = ({
         setActiveManager(updated);
         setValidationResult({
           success: true,
-          message: 'Connection validated and saved in browser localStorage (persists across sessions).',
+          message: 'Azure DevOps connection validated for this browser session.',
           permissions: {
             workItemRead: res.data.canRead,
             workItemUpdate: res.data.canWrite,
