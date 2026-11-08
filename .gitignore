@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Local development audit records
+.sit_nexus_audit.json
+.sit_nexus_audit.json.*.tmp
