@@ -84,6 +84,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           connected: true,
           organization: res.data.organization,
           project: res.data.project,
+          areaPath,
           canRead: res.data.canRead,
           canWrite: res.data.canWrite,
           lastValidatedAt: new Date().toISOString(),
@@ -224,6 +225,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               value={areaPath}
               onChange={(val) => {
                 setAreaPath(val);
+                const connection = CredentialService.getConnection();
+                if (connection) CredentialService.setConnection({ ...connection, areaPath: val });
                 onManagerUpdated({ ...activeManager, areaPath: val });
               }}
               label="Default Area Path"
