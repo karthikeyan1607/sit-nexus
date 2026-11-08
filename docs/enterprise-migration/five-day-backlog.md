@@ -20,7 +20,8 @@ Exit: complete dependency map and approved technical contracts; no unsafe produc
 - [x] Introduce database-engine-independent repository interfaces and transaction boundary contract.
 - [ ] Implement the selected SQL adapter and versioned migrations once CAT's supported database is known (blocked: engine unknown).
 - [ ] Implement SQL-backed user-scoped settings, project configuration, resource master and audit repositories (interfaces defined; adapter pending).
-- [x] Add authorization policy tests for cross-region, cross-project and read/write isolation (execution still required in CI).
+- [x] Add authorization policy and HTTP identity tests (9/9 passed in GitHub Actions run [42479184107](https://github.com/karthikeyan1607/sit-nexus/actions/runs/42479184107)).
+- [x] Add GitHub Actions workflow for corporate tests, TypeScript typecheck and Vite build (all steps passed).
 
 Exit: no global active manager and no JSON-file runtime persistence. **Not yet met:** legacy runtime still uses the JSON store/global manager; replacement is blocked on DB selection and staged route migration.
 
