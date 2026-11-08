@@ -802,7 +802,7 @@ ORDER BY [System.Id] DESC`;
       region: string;
     },
     resourceMaster: StoredResource[],
-    pat?: string
+    pat: string
   ): Promise<SprintClosurePreviewResult> {
     const org = String(params.organization || 'cat-digital').trim();
     const proj = String(params.project || 'Cat Digital').trim();
@@ -848,106 +848,71 @@ WHERE
     ${whereConditions.join('\n    AND ')}
 ORDER BY [System.Id] DESC`;
 
-    let rawStories: StoredStory[] = [];
-    let filterIsolation: SprintClosureDiagnostics['filterIsolation'] | undefined = undefined;
-
-    const hasLivePat = Boolean(pat && pat.trim().length > 0);
-
-    if (hasLivePat) {
-      const client = new AzureClient(org, proj);
-      const workItemService = new WorkItemService(client);
-
-      let workItemIds: number[] = [];
-      try {
-        workItemIds = await workItemService.queryUserStories(wiql, pat!);
-      } catch (err) {
-        throw err;
-      }
-
-      // Hierarchy fallback for area path if 0 items
-      if (workItemIds.length === 0 && area) {
-        const underConditions = whereConditions.map((c) =>
-          c.startsWith('[System.AreaPath] = ')
-            ? `[System.AreaPath] UNDER '${escapedArea}'`
-            : c
-        );
-        const underWiql = `SELECT [System.Id] FROM WorkItems WHERE ${underConditions.join(' AND ')}`;
-        try {
-          const underIds = await workItemService.queryUserStories(underWiql, pat!);
-          if (underIds.length > 0) {
-            workItemIds = underIds;
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      // Batch retrieve work items
-      const rawItems = workItemIds.length > 0
-        ? await workItemService.getWorkItemsBatch(workItemIds.slice(0, 500), pat!)
-        : [];
-
-      rawStories = rawItems.map((item) => normalizeAdoStory(item, area, iteration));
-
-      // Filter isolation diagnostics (Section 11)
-      try {
-        const runCount = async (clause: string): Promise<number> => {
-          try {
-            const ids = await workItemService.queryUserStories(`SELECT [System.Id] FROM WorkItems WHERE ${clause}`, pat!);
-            return ids.length;
-          } catch {
-            return -1;
-          }
-        };
-
-        const [stageA, stageB, stageC] = await Promise.all([
-          runCount(`[System.TeamProject] = '${escapedProj}' AND [System.WorkItemType] = 'User Story'`),
-          iteration ? runCount(`[System.TeamProject] = '${escapedProj}' AND [System.WorkItemType] = 'User Story' AND [System.IterationPath] = '${escapedIter}'`) : Promise.resolve(0),
-          area ? runCount(`[System.TeamProject] = '${escapedProj}' AND [System.WorkItemType] = 'User Story' AND [System.AreaPath] = '${escapedArea}'`) : Promise.resolve(0),
-        ]);
-
-        const stageD = rawStories.length;
-        const stageE = rawStories.filter((s) => normalize(s.status) === 'internal review').length;
-
-        filterIsolation = {
-          stageA_ProjectUserStory: Math.max(0, stageA),
-          stageB_IterationPath: Math.max(0, stageB),
-          stageC_AreaPath: Math.max(0, stageC),
-          stageD_BothPaths: stageD,
-          stageE_InternalReview: stageE,
-          stageF_ResourceMasterMatched: 0,
-        };
-      } catch {
-        // ignore isolation error
-      }
-    } else {
-      // Mock Mode
-      const allStories = db.getStories() || [];
-      rawStories = allStories.filter((s) => {
-        if (iteration) {
-          const matchesIteration = normalize(s.iterationPath) === normalize(iteration) ||
-            normalize(s.sprint) === normalize(iteration) ||
-            normalize(iteration).includes(normalize(s.sprint));
-          if (!matchesIteration) return false;
-        }
-        if (area) {
-          const matchesArea = normalize(s.areaPath) === normalize(area) ||
-            normalize(s.areaPath).startsWith(normalize(area));
-          if (!matchesArea) return false;
-        }
-        return true;
-      });
-
-      const allMock = db.getStories() || [];
-      filterIsolation = {
-        stageA_ProjectUserStory: allMock.length,
-        stageB_IterationPath: allMock.filter((s) => normalize(s.sprint) === normalize(iteration) || normalize(s.iterationPath) === normalize(iteration)).length,
-        stageC_AreaPath: allMock.filter((s) => normalize(s.areaPath) === normalize(area) || normalize(s.areaPath).startsWith(normalize(area))).length,
-        stageD_BothPaths: rawStories.length,
-        stageE_InternalReview: rawStories.filter((s) => normalize(s.status) === 'internal review').length,
-        stageF_ResourceMasterMatched: 0,
+    if (!pat?.trim()) {
+      throw {
+        code: 'AZURE_DEVOPS_NOT_CONNECTED',
+        message: 'An Azure DevOps PAT is required to preview sprint closure.',
+        statusCode: 401,
       };
     }
+    if (!org || !proj) {
+      throw {
+        code: 'AZURE_DEVOPS_CONFIGURATION_MISSING',
+        message: 'Azure DevOps organization and project must be configured.',
+        statusCode: 409,
+      };
+    }
+
+    const rawStories: StoredStory[] = [];
+    let filterIsolation: SprintClosureDiagnostics['filterIsolation'] | undefined = undefined;
+    const client = new AzureClient(org, proj);
+    const workItemService = new WorkItemService(client);
+
+    const workItemIds = await workItemService.queryUserStories(wiql, pat.trim());
+
+    // Include descendant Area Paths when the selected node itself has no stories.
+    let retrievedWorkItemIds = workItemIds;
+    if (workItemIds.length === 0 && area) {
+      const underConditions = whereConditions.map((condition) =>
+        condition.startsWith('[System.AreaPath] = ')
+          ? `[System.AreaPath] UNDER '${escapedArea}'`
+          : condition
+      );
+      const underWiql = `SELECT [System.Id] FROM WorkItems WHERE ${underConditions.join(' AND ')}`;
+      retrievedWorkItemIds = await workItemService.queryUserStories(underWiql, pat.trim());
+    }
+
+    // Batch retrieval is still live Azure DevOps data; an API failure must propagate.
+    const rawItems = retrievedWorkItemIds.length > 0
+      ? await workItemService.getWorkItemsBatch(retrievedWorkItemIds.slice(0, 500), pat.trim())
+      : [];
+    const fetchedStories = rawItems.map((item) => normalizeAdoStory(item, area, iteration));
+    rawStories.push(...fetchedStories);
+
+    // Filter-isolation diagnostics are best-effort only after the primary live query succeeded.
+    const runCount = async (clause: string): Promise<number> => {
+      try {
+        const ids = await workItemService.queryUserStories(`SELECT [System.Id] FROM WorkItems WHERE ${clause}`, pat.trim());
+        return ids.length;
+      } catch {
+        return -1;
+      }
+    };
+
+    const [stageA, stageB, stageC] = await Promise.all([
+      runCount(`[System.TeamProject] = '${escapedProj}' AND [System.WorkItemType] = 'User Story'`),
+      iteration ? runCount(`[System.TeamProject] = '${escapedProj}' AND [System.WorkItemType] = 'User Story' AND [System.IterationPath] = '${escapedIter}'`) : Promise.resolve(0),
+      area ? runCount(`[System.TeamProject] = '${escapedProj}' AND [System.WorkItemType] = 'User Story' AND [System.AreaPath] = '${escapedArea}'`) : Promise.resolve(0),
+    ]);
+
+    filterIsolation = {
+      stageA_ProjectUserStory: Math.max(0, stageA),
+      stageB_IterationPath: Math.max(0, stageB),
+      stageC_AreaPath: Math.max(0, stageC),
+      stageD_BothPaths: rawStories.length,
+      stageE_InternalReview: rawStories.filter((story) => normalize(story.status) === 'internal review').length,
+      stageF_ResourceMasterMatched: 0,
+    };
 
     // Normalized Resource Master
     const normalizedMaster: NormalizedResourceIdentity[] = (resourceMaster || [])
@@ -1052,7 +1017,7 @@ ORDER BY [System.Id] DESC`;
       totalStoryPoints,
       diagnostics,
       managerCanUpdate: true,
-      dataSource: hasLivePat ? 'azure' : 'mock',
+      dataSource: 'azure',
     };
   }
 
@@ -1072,7 +1037,7 @@ ORDER BY [System.Id] DESC`;
       managerId: string;
     },
     resourceMaster: StoredResource[],
-    pat?: string
+    pat: string
   ): Promise<{
     success: boolean;
     message: string;
@@ -1087,6 +1052,13 @@ ORDER BY [System.Id] DESC`;
       auditRecordId: string;
     };
   }> {
+    if (!pat?.trim()) {
+      throw {
+        code: 'AZURE_DEVOPS_NOT_CONNECTED',
+        message: 'An Azure DevOps PAT is required to execute sprint closure.',
+        statusCode: 401,
+      };
+    }
     const startedAt = new Date().toISOString();
     const auditId = `audit-${Date.now()}`;
     const requestedIdSet = new Set(params.storyIds.map(Number));
@@ -1104,8 +1076,8 @@ ORDER BY [System.Id] DESC`;
       pat
     );
 
-    const client = pat ? new AzureClient(params.organization, params.project) : null;
-    const workItemService = client ? new WorkItemService(client) : null;
+    const client = new AzureClient(params.organization, params.project);
+    const workItemService = new WorkItemService(client);
 
     let successfulUpdates = 0;
     let skippedUpdates = 0;
@@ -1183,11 +1155,7 @@ ORDER BY [System.Id] DESC`;
 
       // Execute transition to Closed
       try {
-        if (workItemService && pat) {
-          await workItemService.updateWorkItemState(story.id, 'Closed', pat);
-        } else {
-          db.updateStory(story.id, { status: 'Closed' });
-        }
+        await workItemService.updateWorkItemState(story.id, 'Closed', pat.trim());
 
         successfulUpdates++;
         totalPoints += story.storyPoints || 0;
