@@ -71,7 +71,10 @@ router.post('/validate', async (req: Request, res: Response) => {
     });
   }
 
-  // Connection configuration is kept in the requesting browser; this endpoint only validates the supplied PAT.\n\n  // Return connection result - NEVER return the PAT!\n  res.json({
+  // Connection configuration is kept in the requesting browser; this endpoint only validates the supplied PAT.
+
+  // Return connection result - NEVER return the PAT!
+  res.json({
     success: true,
     data: {
       connected: true,
